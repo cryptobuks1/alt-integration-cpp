@@ -153,7 +153,7 @@ bool MemPool::add(const std::vector<VbkBlock>& blocks, ValidationState& state) {
 }
 
 bool MemPool::add(const ATV& atv, ValidationState& state) {
-  if (!checkATV(atv, state, *alt_chain_params_, *vbk_chain_params_)) {
+  if (!checkATV(atv, state, alt_chain_params_, vbk_chain_params_)) {
     return state.Invalid("mempool-add-atv");
   }
 
@@ -185,7 +185,7 @@ bool MemPool::add(const std::vector<ATV>& atvs, ValidationState& state) {
 }
 
 bool MemPool::add(const VTB& vtb, ValidationState& state) {
-  if (!checkVTB(vtb, state, *vbk_chain_params_, *btc_chain_params_)) {
+  if (!checkVTB(vtb, state, vbk_chain_params_, btc_chain_params_)) {
     return state.Invalid("mempool-add-vtb");
   }
 

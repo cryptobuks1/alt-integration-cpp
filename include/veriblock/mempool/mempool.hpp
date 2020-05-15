@@ -30,13 +30,13 @@ struct MemPool {
   using block_index_t = std::unordered_map<vbk_hash_t, VbkBlock>;
 
   ~MemPool() = default;
-  MemPool(const AltChainParams& alt_param,
+  MemPool(const AltChainParams& alt_params,
           const VbkChainParams& vbk_params,
           const BtcChainParams& btc_params,
           Hash_Function function)
-      : alt_chain_params_(&alt_param),
-        vbk_chain_params_(&vbk_params),
-        btc_chain_params_(&btc_params),
+      : alt_chain_params_(alt_params),
+        vbk_chain_params_(vbk_params),
+        btc_chain_params_(btc_params),
         hasher(function) {}
 
   bool add(const VTB& vtb, ValidationState& state);
@@ -56,9 +56,9 @@ struct MemPool {
   std::unordered_map<ATV::id_t, ATV> stored_atvs_;
   std::unordered_map<BtcEndorsement::id_t, VTB> stored_vtbs_;
 
-  const AltChainParams* alt_chain_params_{nullptr};
-  const VbkChainParams* vbk_chain_params_{nullptr};
-  const BtcChainParams* btc_chain_params_{nullptr};
+  const AltChainParams& alt_chain_params_;
+  const VbkChainParams& vbk_chain_params_;
+  const BtcChainParams& btc_chain_params_;
 
   Hash_Function hasher;
 
