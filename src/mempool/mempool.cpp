@@ -13,13 +13,13 @@ namespace altintegration {
 
 namespace {
 
-bool checkConnectivityWithBlock(const VbkBlock& check_block,
-                                const VbkBlock& current_block) {
+bool connectsTo(const VbkBlock& check_block,
+              const VbkBlock& current_block) {
   return check_block.previousBlock == current_block.getShortHash();
 }
 
-bool checkConnectivityWithTree(const VbkBlock& check_block,
-                               const VbkBlockTree& tree) {
+bool connectsTo(const VbkBlock& check_block,
+                const VbkBlockTree& tree) {
   return tree.getBlockIndex(check_block.previousBlock) != nullptr;
 }
 
@@ -58,7 +58,7 @@ void MemPool::uploadVbkContext(const ATV& atv) {
 bool MemPool::fillContext(VbkBlock first_block,
                           std::vector<VbkBlock>& context,
                           AltTree& tree) {
-  while (!checkConnectivityWithTree(first_block, tree.vbk())) {
+  while (!connectsTo(first_block, tree.vbk())) {
     auto el = block_index_.find(first_block.previousBlock);
     if (el != block_index_.end()) {
       first_block = el->second;
@@ -209,7 +209,7 @@ std::vector<PopData> MemPool::getPop(const AltBlock& current_block,
     VbkBlock first_block =
         !atv.context.empty() ? atv.context[0] : atv.containingBlock;
 
-    if (!checkConnectivityWithTree(first_block, tree.vbk())) {
+    if (!connectsTo(first_block, tree.vbk())) {
       if (fillContext(first_block, popTx.vbk_context, tree)) {
         fillVTBs(popTx.vtbs, popTx.vbk_context);
         popTx.atv = atv;
