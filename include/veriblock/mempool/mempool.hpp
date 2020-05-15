@@ -39,8 +39,12 @@ struct MemPool {
         btc_chain_params_(&btc_params),
         hasher(function) {}
 
-  bool submitVTB(const std::vector<VTB>& vtb, ValidationState& state);
-  bool submitATV(const std::vector<ATV>& atv, ValidationState& state);
+  bool add(const VTB& vtb, ValidationState& state);
+  bool add(const std::vector<VTB>& vtbs, ValidationState& state);
+  bool add(const ATV& atv, ValidationState& state);
+  bool add(const std::vector<ATV>& atvs, ValidationState& state);
+  bool add(const VbkBlock& block, ValidationState& state);
+  bool add(const std::vector<VbkBlock>& blocks, ValidationState& state);
 
   std::vector<PopData> getPop(const AltBlock& current_block, AltTree& tree);
 
@@ -57,9 +61,6 @@ struct MemPool {
   const BtcChainParams* btc_chain_params_{nullptr};
 
   Hash_Function hasher;
-
-  void uploadVbkContext(const VTB&);
-  void uploadVbkContext(const ATV&);
 
   bool fillContext(VbkBlock first_block,
                    std::vector<VbkBlock>& context,

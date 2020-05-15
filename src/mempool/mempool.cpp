@@ -39,22 +39,6 @@ std::vector<std::pair<ATV::id_t, ATV>> getSortedATVs(
 
 }  // namespace
 
-void MemPool::uploadVbkContext(const VTB& vtb) {
-  block_index_[vtb.containingBlock.getShortHash()] = vtb.containingBlock;
-
-  for (const auto& b : vtb.context) {
-    block_index_[b.getShortHash()] = b;
-  }
-}
-
-void MemPool::uploadVbkContext(const ATV& atv) {
-  block_index_[atv.containingBlock.getShortHash()] = atv.containingBlock;
-
-  for (const auto& b : atv.context) {
-    block_index_[b.getShortHash()] = b;
-  }
-}
-
 bool MemPool::fillContext(VbkBlock first_block,
                           std::vector<VbkBlock>& context,
                           AltTree& tree) {
@@ -151,35 +135,82 @@ bool MemPool::applyPayloads(const AltBlock& hack_block,
   return true;
 }
 
-bool MemPool::submitATV(const std::vector<ATV>& atvs, ValidationState& state) {
-  for (size_t i = 0; i < atvs.size(); ++i) {
-    if (!checkATV(atvs[i], state, *alt_chain_params_, *vbk_chain_params_)) {
-      return state.Invalid("mempool-submit-atv", i);
-    }
+bool MemPool::add(const VbkBlock& block, ValidationState& state) {
+  block_index_[block.getShortHash()] = block;
 
-    uploadVbkContext(atvs[i]);
-    auto pair = std::make_pair(atvs[i].getId(), atvs[i]);
-    // clear context
-    pair.second.context.clear();
+  //FIXME: stateful Validation
+  std::ignore = state;
 
-    stored_atvs_.insert(pair);
+  return true;
+}
+
+bool MemPool::add(const std::vector<VbkBlock>& blocks, ValidationState& state) {
+  for (const auto& block : blocks) {
+    add(block, state);
   }
 
   return true;
 }
 
-bool MemPool::submitVTB(const std::vector<VTB>& vtbs, ValidationState& state) {
-  for (size_t i = 0; i < vtbs.size(); ++i) {
-    if (!checkVTB(vtbs[i], state, *vbk_chain_params_, *btc_chain_params_)) {
-      return state.Invalid("mempool-submit-vtb", i);
+bool MemPool::add(const ATV& atv, ValidationState& state) {
+  if (!checkATV(atv, state, *alt_chain_params_, *vbk_chain_params_)) {
+    return state.Invalid("mempool-add-atv");
+  }
+
+  if (!add(atv.containingBlock, state)) {
+    return state.Invalid("mempool-add-atv-containing-block");
+  }
+
+  if (!add(atv.context, state)) {
+    return state.Invalid("mempool-add-atv-context");
+  }
+
+  auto pair = std::make_pair(atv.getId(), atv);
+  // clear context
+  pair.second.context.clear();
+
+  stored_atvs_.insert(pair);
+
+  return true;
+}
+
+bool MemPool::add(const std::vector<ATV>& atvs, ValidationState& state) {
+  for (size_t i = 0; i < atvs.size(); ++i) {
+    if (!add(atvs[i], state)) {
+      return state.Invalid("mempool-add-atvs", i);
     }
+  }
 
-    uploadVbkContext(vtbs[i]);
-    auto pair = std::make_pair(BtcEndorsement::getId(vtbs[i]), vtbs[i]);
-    // clear contex
-    pair.second.context.clear();
+  return true;
+}
 
-    stored_vtbs_.insert(pair);
+bool MemPool::add(const VTB& vtb, ValidationState& state) {
+  if (!checkVTB(vtb, state, *vbk_chain_params_, *btc_chain_params_)) {
+    return state.Invalid("mempool-add-vtb");
+  }
+
+  if (!add(vtb.containingBlock, state)) {
+      return state.Invalid("mempool-add-vtb-containing-block");
+  };
+
+  if (!add(vtb.context, state)) {
+    return state.Invalid("mempool-add-vtb-context");
+  };
+
+  auto pair = std::make_pair(BtcEndorsement::getId(vtb), vtb);
+  // clear context
+  pair.second.context.clear();
+
+  stored_vtbs_.insert(pair);
+
+  return true;
+}
+
+bool MemPool::add(const std::vector<VTB>& vtbs, ValidationState& state) {
+  for (size_t i = 0; i < vtbs.size(); ++i) {
+    if (!add(vtbs[i], state)) {
+      return state.Invalid("mempool-add-vtbs", i);
+    }
   }
 
   return true;
