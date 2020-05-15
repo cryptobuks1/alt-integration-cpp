@@ -1,6 +1,7 @@
 include_directories(${CMAKE_CURRENT_LIST_DIR})
 
 add_subdirectory(blockchain)
+add_subdirectory(mempool)
 add_subdirectory(rewards)
 add_subdirectory(third_party)
 add_subdirectory(entities)
@@ -24,13 +25,13 @@ set(SOURCES
         stateless_validation.cpp
         arith_uint256.cpp
         signutil.cpp
-        mempool.cpp
         mock_miner.cpp
         $<TARGET_OBJECTS:strutil>
         $<TARGET_OBJECTS:blockchain>
         $<TARGET_OBJECTS:poprewards>
         $<TARGET_OBJECTS:pop_utils>
         $<TARGET_OBJECTS:entities>
+        $<TARGET_OBJECTS:mempool>
         $<TARGET_OBJECTS:sha256>
         $<TARGET_OBJECTS:bigdecimal>
         $<TARGET_OBJECTS:vblake>
