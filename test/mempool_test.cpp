@@ -3,7 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-#include "veriblock/mempool.hpp"
+#include "veriblock/mempool/mempool.hpp"
+#include "veriblock/mempool/pop_data_assembler.hpp"
 
 #include <gtest/gtest.h>
 
@@ -25,8 +26,8 @@ struct MemPoolFixture : public PopTestFixture, public ::testing::Test {};
 TEST_F(MemPoolFixture, removePayloads_test) {
   MemPool mempool(alttree.getParams(),
                   alttree.vbk().getParams(),
-                  alttree.btc().getParams(),
-                  &hash_function);
+                  alttree.btc().getParams());
+  PopDataAssembler assembler(mempool, &hash_function);
 
   std::vector<AltBlock> chain = {altparam.getBootstrapBlock()};
 
@@ -62,14 +63,14 @@ TEST_F(MemPoolFixture, removePayloads_test) {
   EXPECT_TRUE(mempool.add(atv, state));
   EXPECT_TRUE(mempool.add(vtbs, state));
 
-  std::vector<PopData> v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  std::vector<PopData> v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 1);
   EXPECT_EQ(v_popData[0].vtbs.size(), 2);
   EXPECT_EQ(v_popData[0].atv, atv);
 
   // do the same to show that from mempool do not remove payloads
-  v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 1);
   EXPECT_EQ(v_popData[0].vtbs.size(), 2);
@@ -78,15 +79,15 @@ TEST_F(MemPoolFixture, removePayloads_test) {
   // remove from mempool
   mempool.removePayloads(v_popData);
 
-  v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  v_popData = assembler.getPop(*chain.rbegin(), alttree);
   EXPECT_EQ(v_popData.size(), 0);
 }
 
 TEST_F(MemPoolFixture, getPop_scenario_1) {
   MemPool mempool(alttree.getParams(),
                   alttree.vbk().getParams(),
-                  alttree.btc().getParams(),
-                  &hash_function);
+                  alttree.btc().getParams());
+  PopDataAssembler assembler(mempool, &hash_function);
 
   std::vector<AltBlock> chain = {altparam.getBootstrapBlock()};
 
@@ -128,7 +129,7 @@ TEST_F(MemPoolFixture, getPop_scenario_1) {
   EXPECT_TRUE(mempool.add(atv, state));
   EXPECT_TRUE(mempool.add(vtbs, state));
 
-  std::vector<PopData> v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  std::vector<PopData> v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 1);
   EXPECT_EQ(v_popData[0].vtbs.size(), 2);
@@ -148,8 +149,8 @@ TEST_F(MemPoolFixture, getPop_scenario_1) {
 TEST_F(MemPoolFixture, getPop_scenario_2) {
   MemPool mempool(alttree.getParams(),
                   alttree.vbk().getParams(),
-                  alttree.btc().getParams(),
-                  &hash_function);
+                  alttree.btc().getParams());
+  PopDataAssembler assembler(mempool, &hash_function);
 
   std::vector<AltBlock> chain = {altparam.getBootstrapBlock()};
 
@@ -196,7 +197,7 @@ TEST_F(MemPoolFixture, getPop_scenario_2) {
   EXPECT_TRUE(mempool.add(atv, state));
   EXPECT_TRUE(mempool.add({vtb1, vtb2}, state));
 
-  std::vector<PopData> v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  std::vector<PopData> v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 1);
   EXPECT_EQ(v_popData[0].vtbs.size(), 2);
@@ -215,8 +216,8 @@ TEST_F(MemPoolFixture, getPop_scenario_2) {
 TEST_F(MemPoolFixture, getPop_scenario_3) {
   MemPool mempool(alttree.getParams(),
                   alttree.vbk().getParams(),
-                  alttree.btc().getParams(),
-                  &hash_function);
+                  alttree.btc().getParams());
+  PopDataAssembler assembler(mempool, &hash_function);
 
   std::vector<AltBlock> chain = {altparam.getBootstrapBlock()};
 
@@ -234,7 +235,7 @@ TEST_F(MemPoolFixture, getPop_scenario_3) {
 
   EXPECT_TRUE(mempool.add(atv, state));
 
-  std::vector<PopData> v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  std::vector<PopData> v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 0);
 }
@@ -242,8 +243,8 @@ TEST_F(MemPoolFixture, getPop_scenario_3) {
 TEST_F(MemPoolFixture, getPop_scenario_4) {
   MemPool mempool(alttree.getParams(),
                   alttree.vbk().getParams(),
-                  alttree.btc().getParams(),
-                  &hash_function);
+                  alttree.btc().getParams());
+  PopDataAssembler assembler(mempool, &hash_function);
 
   std::vector<AltBlock> chain = {altparam.getBootstrapBlock()};
 
@@ -262,7 +263,7 @@ TEST_F(MemPoolFixture, getPop_scenario_4) {
 
   EXPECT_TRUE(mempool.add(atv, state));
 
-  std::vector<PopData> v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  std::vector<PopData> v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 1);
   EXPECT_EQ(v_popData[0].vtbs.size(), 0);
@@ -281,8 +282,8 @@ TEST_F(MemPoolFixture, getPop_scenario_4) {
 TEST_F(MemPoolFixture, getPop_scenario_5) {
   MemPool mempool(alttree.getParams(),
                   alttree.vbk().getParams(),
-                  alttree.btc().getParams(),
-                  &hash_function);
+                  alttree.btc().getParams());
+  PopDataAssembler assembler(mempool, &hash_function);
 
   std::vector<AltBlock> chain = {altparam.getBootstrapBlock()};
 
@@ -331,7 +332,7 @@ TEST_F(MemPoolFixture, getPop_scenario_5) {
   EXPECT_TRUE(mempool.add({atv1, atv2}, state));
   EXPECT_TRUE(mempool.add({vtb2, vtb1}, state));
 
-  std::vector<PopData> v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  std::vector<PopData> v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 2);
   EXPECT_EQ(v_popData[0].vtbs.size(), 1);
@@ -358,8 +359,8 @@ TEST_F(MemPoolFixture, getPop_scenario_5) {
 TEST_F(MemPoolFixture, getPop_scenario_6) {
   MemPool mempool(alttree.getParams(),
                   alttree.vbk().getParams(),
-                  alttree.btc().getParams(),
-                  &hash_function);
+                  alttree.btc().getParams());
+  PopDataAssembler assembler(mempool, &hash_function);
 
   std::vector<AltBlock> chain = {altparam.getBootstrapBlock()};
 
@@ -408,7 +409,7 @@ TEST_F(MemPoolFixture, getPop_scenario_6) {
   EXPECT_TRUE(mempool.add({atv2, atv1}, state));
   EXPECT_TRUE(mempool.add({vtb2, vtb1}, state));
 
-  std::vector<PopData> v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  std::vector<PopData> v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 2);
   EXPECT_EQ(v_popData[0].vtbs.size(), 1);
@@ -435,8 +436,8 @@ TEST_F(MemPoolFixture, getPop_scenario_6) {
 TEST_F(MemPoolFixture, getPop_scenario_7) {
   MemPool mempool(alttree.getParams(),
                   alttree.vbk().getParams(),
-                  alttree.btc().getParams(),
-                  &hash_function);
+                  alttree.btc().getParams());
+  PopDataAssembler assembler(mempool, &hash_function);
 
   std::vector<AltBlock> chain = {altparam.getBootstrapBlock()};
 
@@ -485,7 +486,7 @@ TEST_F(MemPoolFixture, getPop_scenario_7) {
   EXPECT_TRUE(mempool.add({atv2, atv1}, state));
   EXPECT_TRUE(mempool.add({vtb2, vtb1}, state));
 
-  std::vector<PopData> v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  std::vector<PopData> v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 1);
   EXPECT_EQ(v_popData[0].vtbs.size(), 1);
@@ -505,8 +506,8 @@ TEST_F(MemPoolFixture, getPop_scenario_7) {
 TEST_F(MemPoolFixture, getPop_scenario_8) {
   MemPool mempool(alttree.getParams(),
                   alttree.vbk().getParams(),
-                  alttree.btc().getParams(),
-                  &hash_function);
+                  alttree.btc().getParams());
+  PopDataAssembler assembler(mempool, &hash_function);
 
   Miner<VbkBlock, VbkChainParams> vbk_miner(popminer.vbk().getParams());
 
@@ -572,7 +573,7 @@ TEST_F(MemPoolFixture, getPop_scenario_8) {
   EXPECT_TRUE(mempool.add(atv1, state));
   EXPECT_TRUE(mempool.add({vtb1, vtb2}, state));
 
-  std::vector<PopData> v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  std::vector<PopData> v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 1);
   EXPECT_EQ(v_popData[0].vtbs.size(), 1);
@@ -592,8 +593,8 @@ TEST_F(MemPoolFixture, getPop_scenario_8) {
 TEST_F(MemPoolFixture, getPop_scenario_9) {
   MemPool mempool(alttree.getParams(),
                   alttree.vbk().getParams(),
-                  alttree.btc().getParams(),
-                  &hash_function);
+                  alttree.btc().getParams());
+  PopDataAssembler assembler(mempool, &hash_function);
 
   Miner<VbkBlock, VbkChainParams> vbk_miner(popminer.vbk().getParams());
 
@@ -613,7 +614,7 @@ TEST_F(MemPoolFixture, getPop_scenario_9) {
 
   EXPECT_TRUE(mempool.add(atv1, state));
 
-  std::vector<PopData> v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  std::vector<PopData> v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 1);
   EXPECT_EQ(v_popData[0].atv, atv1);
@@ -632,7 +633,7 @@ TEST_F(MemPoolFixture, getPop_scenario_9) {
 
   EXPECT_TRUE(mempool.add(atv1, state));
 
-  v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 0);
 }
@@ -640,8 +641,8 @@ TEST_F(MemPoolFixture, getPop_scenario_9) {
 TEST_F(MemPoolFixture, getPop_scenario_10) {
   MemPool mempool(alttree.getParams(),
                   alttree.vbk().getParams(),
-                  alttree.btc().getParams(),
-                  &hash_function);
+                  alttree.btc().getParams());
+  PopDataAssembler assembler(mempool, &hash_function);
 
   Miner<VbkBlock, VbkChainParams> vbk_miner(popminer.vbk().getParams());
 
@@ -672,7 +673,7 @@ TEST_F(MemPoolFixture, getPop_scenario_10) {
   EXPECT_TRUE(mempool.add(atv1, state));
   EXPECT_TRUE(mempool.add(vtb1, state));
 
-  std::vector<PopData> v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  std::vector<PopData> v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 1);
   EXPECT_EQ(v_popData[0].vtbs.size(), 1);
@@ -735,7 +736,7 @@ TEST_F(MemPoolFixture, getPop_scenario_10) {
   EXPECT_TRUE(mempool.add(atv2, state));
   EXPECT_TRUE(mempool.add(vtb2, state));
 
-  v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 1);
   EXPECT_EQ(v_popData[0].vtbs.size(), 0);
@@ -744,8 +745,8 @@ TEST_F(MemPoolFixture, getPop_scenario_10) {
 TEST_F(MemPoolFixture, getPop_scenario_11) {
   MemPool mempool(alttree.getParams(),
                   alttree.vbk().getParams(),
-                  alttree.btc().getParams(),
-                  &hash_function);
+                  alttree.btc().getParams());
+  PopDataAssembler assembler(mempool, &hash_function);
 
   Miner<VbkBlock, VbkChainParams> vbk_miner(popminer.vbk().getParams());
 
@@ -765,7 +766,7 @@ TEST_F(MemPoolFixture, getPop_scenario_11) {
 
   EXPECT_TRUE(mempool.add(atv1, state));
 
-  std::vector<PopData> v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  std::vector<PopData> v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 1);
   EXPECT_EQ(v_popData[0].atv, atv1);
@@ -787,7 +788,7 @@ TEST_F(MemPoolFixture, getPop_scenario_11) {
 
   EXPECT_TRUE(mempool.add(atv2, state));
 
-  v_popData = mempool.getPop(*chain.rbegin(), alttree);
+  v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
   EXPECT_EQ(v_popData.size(), 1);
   EXPECT_EQ(v_popData[0].atv, atv2);
@@ -806,8 +807,8 @@ TEST_F(MemPoolFixture, getPop_scenario_11) {
 TEST_F(MemPoolFixture, getPop_scenario_12) {
     MemPool mempool(alttree.getParams(),
         alttree.vbk().getParams(),
-        alttree.btc().getParams(),
-        &hash_function);
+        alttree.btc().getParams());
+    PopDataAssembler assembler(mempool, &hash_function);
 
     Miner<VbkBlock, VbkChainParams> vbk_miner(popminer.vbk().getParams());
 
@@ -830,7 +831,7 @@ TEST_F(MemPoolFixture, getPop_scenario_12) {
         EXPECT_TRUE(mempool.add(atv, state));
     }
 
-    std::vector<PopData> v_popData = mempool.getPop(*chain.rbegin(), alttree);
+    std::vector<PopData> v_popData = assembler.getPop(*chain.rbegin(), alttree);
 
     EXPECT_EQ(v_popData.size(), alttree.getParams().getMaxPopDataPerBlock());
 }
