@@ -6,10 +6,11 @@
 #ifndef ALT_INTEGRATION_INCLUDE_VERIBLOCK_STORAGE_PAYLOADS_STORAGE_HPP_
 #define ALT_INTEGRATION_INCLUDE_VERIBLOCK_STORAGE_PAYLOADS_STORAGE_HPP_
 
+#include <veriblock/blockchain/command_group.hpp>
 #include <veriblock/entities/atv.hpp>
 #include <veriblock/entities/vtb.hpp>
-#include <veriblock/storage/storage_exceptions.hpp>
 #include <veriblock/storage/payloads_base_storage.hpp>
+#include <veriblock/storage/storage_exceptions.hpp>
 
 namespace altintegration {
 
@@ -66,7 +67,7 @@ class PayloadsStorage : public PayloadsBaseStorage<ATV>,
   }
 
   template <typename Payloads>
-  void setValidity(const typename Payloads::id_t &pid, bool valid) {
+  void setValidity(const typename Payloads::id_t& pid, bool valid) {
     auto payloads = loadPayloads<Payloads>(pid);
     payloads.valid = valid;
     savePayloads(payloads);

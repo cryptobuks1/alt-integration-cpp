@@ -5,10 +5,10 @@
 
 #include <veriblock/third_party/BigDecimal.h>
 
+#include "veriblock/entities/vbkblock.hpp"
 #include "veriblock/arith_uint256.hpp"
 #include "veriblock/blockchain/vbk_blockchain_util.hpp"
 #include "veriblock/blockchain/vbk_chain_params.hpp"
-#include "veriblock/entities/vbkblock.hpp"
 
 namespace altintegration {
 

@@ -16,14 +16,14 @@
 
 namespace altintegration {
 
-struct AltPayloads;
+struct ATV;
 struct VbkBlock;
 
 struct AltBlock {
   using height_t = int32_t;
   using hash_t = std::vector<uint8_t>;
   using prev_hash_t = std::vector<uint8_t>;
-  using payloads_t = AltPayloads;
+  using payloads_t = ATV;
   using endorsement_t = AltEndorsement;
   using protecting_block_t = VbkBlock;
 

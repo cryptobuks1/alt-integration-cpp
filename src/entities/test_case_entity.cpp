@@ -33,13 +33,13 @@ TestCase TestCase::fromRaw(ReadStream& stream) {
       [&](ReadStream& stream) -> alt_block_with_payloads_t {
         AltBlock block = AltBlock::fromVbkEncoding(stream);
 
-        std::vector<AltPayloads> payloads_vec = readArrayOf<AltPayloads>(
+        std::vector<PopData> popdata_vec = readArrayOf<PopData>(
             stream,
             0,
             MAX_CONTEXT_COUNT,
-            (AltPayloads(*)(ReadStream&))AltPayloads::fromVbkEncoding);
+            (PopData(*)(ReadStream&))PopData::fromVbkEncoding);
 
-        return std::make_pair(std::move(block), std::move(payloads_vec));
+        return std::make_pair(std::move(block), std::move(popdata_vec));
       });
 
   result.config = Config::fromRaw(stream);

@@ -11,7 +11,6 @@
 #include <vector>
 
 #include "veriblock/arith_uint256.hpp"
-#include "veriblock/entities/btcblock.hpp"
 #include "veriblock/entities/endorsements.hpp"
 #include "veriblock/fmt.hpp"
 #include "veriblock/hashutil.hpp"
@@ -19,6 +18,8 @@
 #include "veriblock/uint.hpp"
 
 namespace altintegration {
+
+struct BtcBlock;
 
 struct VbkBlock {
   using hash_t = uint192;
