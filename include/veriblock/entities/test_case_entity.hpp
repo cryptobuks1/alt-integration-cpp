@@ -13,7 +13,6 @@
 #include "veriblock/config.hpp"
 #include "veriblock/entities/altblock.hpp"
 #include "veriblock/entities/btcblock.hpp"
-#include "veriblock/entities/payloads.hpp"
 #include "veriblock/entities/vbkblock.hpp"
 #include "veriblock/serde.hpp"
 

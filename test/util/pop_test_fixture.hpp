@@ -169,7 +169,6 @@ struct PopTestFixture {
 
     popData.atv = atv;
     popData.atv.context.clear();
-    popData.hasAtv = true;
     popData.vtbs = vtbs;
 
     return popData;
@@ -189,7 +188,6 @@ struct PopTestFixture {
       popData.vtbs.push_back(newvtb);
     }
 
-    popData.hasAtv = true;
     popData.atv = popminer->generateATV(transaction, lastVbk, state);
 
     fillVbkContext(popData.vbk_context,

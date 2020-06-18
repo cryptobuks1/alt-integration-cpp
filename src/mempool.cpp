@@ -6,9 +6,9 @@
 #include "veriblock/mempool.hpp"
 
 #include <deque>
+#include <veriblock/reversed_range.hpp>
 
 #include "veriblock/stateless_validation.hpp"
-#include <veriblock/reversed_range.hpp>
 
 namespace altintegration {
 
@@ -121,22 +121,25 @@ bool MemPool::applyPayloads(const AltBlock& hack_block,
     tree.vbk().removeSubtree(b.getHash());
   }
 
-  AltPayloads payloads;
-  payloads.popData = popdata;
-  payloads.containingBlock = hack_block;
+  //  TODO validate payloads
+  //  AltPayloads payloads;
+  //  payloads.popData = popdata;
+  //  payloads.containingBlock = hack_block;
+  //
+  //  // find endorsed block
+  //  auto endorsed_hash =
+  //  hasher(popdata.atv.transaction.publicationData.header); auto
+  //  endorsed_block_index = tree.getBlockIndex(endorsed_hash); if
+  //  (!endorsed_block_index) {
+  //    return false;
+  //  }
+  //  payloads.endorsed = *endorsed_block_index->header;
+  //
 
-  // find endorsed block
-  auto endorsed_hash = hasher(popdata.atv.transaction.publicationData.header);
-  auto endorsed_block_index = tree.getBlockIndex(endorsed_hash);
-  if (!endorsed_block_index) {
-    return false;
-  }
-  payloads.endorsed = *endorsed_block_index->header;
-
-  if (!tree.validatePayloads(hack_block.getHash(), payloads, state)) {
-    stored_atvs_.erase(popdata.atv.getId());
-    return false;
-  }
+  //  if (!tree.validatePayloads(hack_block.getHash(), payloads, state)) {
+  //    stored_atvs_.erase(popdata.atvs.getId());
+  //    return false;
+  //  }
 
   return true;
 }
@@ -185,15 +188,13 @@ std::vector<PopData> MemPool::getPop(AltTree& tree) {
     if (!checkConnectivityWithTree(first_block, tree.vbk())) {
       if (fillContext(first_block, popTx.vbk_context, tree)) {
         fillVTBs(popTx.vtbs, popTx.vbk_context);
-        popTx.atv = *atv;
-        popTx.hasAtv = true;
+        popTx.atvs.push_back(*atv);
         if (applyPayloads(hack_block, popTx, tree, state)) {
           popTxs.push_back(popTx);
         }
       }
     } else {
-      popTx.atv = *atv;
-      popTx.hasAtv = true;
+      popTx.atvs.push_back(*atv);
       if (applyPayloads(hack_block, popTx, tree, state)) {
         popTxs.push_back(popTx);
       }
@@ -213,10 +214,7 @@ void MemPool::removePayloads(const std::vector<PopData>& PopDatas) {
       vbkblocks_.erase(b.getShortHash());
     }
 
-    // clear atv
-    if (tx.hasAtv) {
-      stored_atvs_.erase(tx.atv.getId());
-    }
+    stored_atvs_.erase(tx.atv.getId());
 
     // clear vtbs
     for (const auto& vtb : tx.vtbs) {

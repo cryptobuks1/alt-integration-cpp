@@ -17,11 +17,9 @@
 #include "veriblock/hashutil.hpp"
 #include "veriblock/serde.hpp"
 #include "veriblock/uint.hpp"
+#include "veriblock/entities/dummy.hpp"
 
 namespace altintegration {
-
-struct DummyPayloads;
-struct DummyEndorsement;
 
 struct BtcBlock {
   using hash_t = uint256;

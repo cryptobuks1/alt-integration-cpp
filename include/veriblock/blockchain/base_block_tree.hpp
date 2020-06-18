@@ -214,8 +214,8 @@ struct BaseBlockTree {
 
   bool operator==(const BaseBlockTree& o) const {
     TreeFieldsComparator cmp{};
-    return cmp(blocks_, o.blocks_) &&
-           cmp(tips_, o.tips_) && (activeChain_ == o.activeChain_);
+    return cmp(blocks_, o.blocks_) && cmp(tips_, o.tips_) &&
+           (activeChain_ == o.activeChain_);
   }
 
   bool operator!=(const BaseBlockTree& o) const { return !operator==(o); }

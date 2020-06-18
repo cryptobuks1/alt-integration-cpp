@@ -139,7 +139,6 @@ struct Scenario1 : public ::testing::Test, public PopTestFixture {
 AltPayloads generateAltPayloadsEmpty(const AltBlock& containing,
                                      const AltBlock& endorsed) {
   PopData altPopTx;
-  altPopTx.hasAtv = false;
 
   AltPayloads alt;
   alt.popData = altPopTx;

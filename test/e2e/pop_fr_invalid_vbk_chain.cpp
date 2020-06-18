@@ -66,7 +66,6 @@ TEST_F(PopFrInvalidVbkChainTest, SendInvalidVTBtoAlternativeVBKchain) {
   AltPayloads p1;
   p1.endorsed = chain[5];
   p1.containingBlock = chain[9];
-  p1.popData.hasAtv = true;
   p1.popData.atv = atv1;
   p1.popData.vtbs = {vtb1};
   fillVbkContext(p1.popData.vbk_context,
@@ -88,7 +87,6 @@ TEST_F(PopFrInvalidVbkChainTest, SendInvalidVTBtoAlternativeVBKchain) {
   AltPayloads p2;
   p2.endorsed = chain[5];
   p2.containingBlock = chain[10];
-  p2.popData.hasAtv = true;
   p2.popData.atv = atv2;
   // break VTB2: break hash of containing block
   vtb2.containingBlock.previousBlock = uint96::fromHex("abcdef");

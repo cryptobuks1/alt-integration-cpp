@@ -10,6 +10,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <veriblock/storage/payloads_storage.hpp>
+#include <veriblock/storage/pop_storage.hpp>
 
 #include "veriblock/blockchain/alt_chain_params.hpp"
 #include "veriblock/blockchain/base_block_tree.hpp"
@@ -18,11 +20,8 @@
 #include "veriblock/blockchain/pop/fork_resolution.hpp"
 #include "veriblock/blockchain/pop/vbk_block_tree.hpp"
 #include "veriblock/entities/altblock.hpp"
-#include "veriblock/entities/payloads.hpp"
 #include "veriblock/rewards/poprewards.hpp"
 #include "veriblock/validation_state.hpp"
-#include <veriblock/storage/pop_storage.hpp>
-#include <veriblock/storage/payloads_storage.hpp>
 
 namespace altintegration {
 
@@ -38,8 +37,10 @@ struct AltTree : public BaseBlockTree<AltBlock> {
   using index_t = BlockIndex<AltBlock>;
   using endorsement_t = typename index_t::endorsement_t;
   using eid_t = typename endorsement_t::id_t;
-  using payloads_t = typename AltBlock::payloads_t;
-  using pid_t = typename payloads_t::id_t;
+  using alt_payloads_t = typename AltBlock::payloads_t;
+  using vbk_payloads_t = VTB;
+  using vbk_block_t = VbkBlock;
+  using pid_t = typename alt_payloads_t::id_t;
   using hash_t = typename AltBlock::hash_t;
 
   using PopForkComparator = PopAwareForkResolutionComparator<AltBlock,
@@ -57,7 +58,8 @@ struct AltTree : public BaseBlockTree<AltBlock> {
       : alt_config_(&alt_config),
         vbk_config_(&vbk_config),
         btc_config_(&btc_config),
-        cmp_(std::make_shared<VbkBlockTree>(vbk_config, btc_config, storagePayloads),
+        cmp_(std::make_shared<VbkBlockTree>(
+                 vbk_config, btc_config, storagePayloads),
              vbk_config,
              alt_config,
              storagePayloads),
@@ -76,20 +78,27 @@ struct AltTree : public BaseBlockTree<AltBlock> {
                       const std::vector<pid_t>& pids);
 
   bool addPayloads(index_t& index,
-                   const std::vector<payloads_t>& payloads,
+                   const std::vector<alt_payloads_t>& alt_payloads,
+                   const std::vector<vbk_payloads_t>& vbk_payloads,
+                   const std::vector<vbk_block_t>& context,
                    ValidationState& state);
 
   bool addPayloads(const AltBlock::hash_t& containing,
-                   const std::vector<payloads_t>& payloads,
+                   const std::vector<alt_payloads_t>& alt_payloads,
+                   const std::vector<vbk_payloads_t>& vbk_payloads,
+                   const std::vector<vbk_block_t>& context,
                    ValidationState& state);
 
   bool addPayloads(const AltBlock& containing,
-                   const std::vector<payloads_t>& payloads,
+                   const std::vector<alt_payloads_t>& alt_payloads,
+                   const std::vector<vbk_payloads_t>& vbk_payloads,
+                   const std::vector<vbk_block_t>& context,
                    ValidationState& state) {
-    return addPayloads(containing.hash, payloads, state);
+    return addPayloads(
+        containing.hash, alt_payloads, vbk_payloads, context, state);
   }
 
-  void payloadsToCommands(const payloads_t& p,
+  void payloadsToCommands(const alt_payloads_t& p,
                           std::vector<CommandPtr>& commands);
 
   bool saveToStorage(PopStorage& storage, ValidationState& state);
@@ -113,11 +122,15 @@ struct AltTree : public BaseBlockTree<AltBlock> {
       const AltBlock::hash_t& tip, ValidationState& state);
 
   bool validatePayloads(const AltBlock& block,
-                        const payloads_t& p,
+                        const std::vector<alt_payloads_t>& alt_payloads,
+                        const std::vector<vbk_payloads_t>& vbk_payloads,
+                        const std::vector<vbk_block_t>& context,
                         ValidationState& state);
 
   bool validatePayloads(const AltBlock::hash_t& block_hash,
-                        const payloads_t& p,
+                        const std::vector<alt_payloads_t>& alt_payloads,
+                        const std::vector<vbk_payloads_t>& vbk_payloads,
+                        const std::vector<vbk_block_t>& context,
                         ValidationState& state);
 
   VbkBlockTree& vbk() { return cmp_.getProtectingBlockTree(); }

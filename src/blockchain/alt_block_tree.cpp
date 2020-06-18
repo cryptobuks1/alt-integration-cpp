@@ -6,6 +6,7 @@
 #include "veriblock/blockchain/alt_block_tree.hpp"
 
 #include <unordered_set>
+#include <veriblock/blockchain/blockchain_storage_util.hpp>
 #include <veriblock/blockchain/commands/commands.hpp>
 #include <veriblock/reversed_range.hpp>
 
@@ -14,7 +15,6 @@
 #include "veriblock/rewards/poprewards.hpp"
 #include "veriblock/rewards/poprewards_calculator.hpp"
 #include "veriblock/stateless_validation.hpp"
-#include <veriblock/blockchain/blockchain_storage_util.hpp>
 
 namespace altintegration {
 
@@ -41,23 +41,38 @@ bool AltTree::bootstrap(ValidationState& state) {
 }
 
 bool AltTree::addPayloads(const AltBlock::hash_t& containing,
-                          const std::vector<payloads_t>& payloads,
+                          const std::vector<alt_payloads_t>& alt_payloads,
+                          const std::vector<vbk_payloads_t>& vbk_payloads,
+                          const std::vector<vbk_block_t>& context,
                           ValidationState& state) {
   auto* index = getBlockIndex(containing);
   if (!index) {
     return state.Invalid(block_t::name() + "-bad-block",
                          "Can't find containing block");
   }
-  return addPayloads(*index, payloads, state);
+  return addPayloads(*index, alt_payloads, vbk_payloads, context, state);
 }
 
 bool AltTree::addPayloads(index_t& index,
-                          const std::vector<payloads_t>& payloads,
+                          const std::vector<alt_payloads_t>& alt_payloads,
+                          const std::vector<vbk_payloads_t>& vbk_payloads,
+                          const std::vector<vbk_block_t>& context,
                           ValidationState& state) {
-  VBK_LOG_INFO("%s add %d payloads to block %s",
+  VBK_LOG_INFO("%s add %d alt payloads to block %s",
                block_t::name(),
-               payloads.size(),
+               alt_payloads.size(),
                index.toShortPrettyString());
+
+  VBK_LOG_INFO("%s add %d vbk payloads to block %s",
+               block_t::name(),
+               vbk_payloads.size(),
+               index.toShortPrettyString());
+
+  VBK_LOG_INFO("%s add %d context to block %s",
+               block_t::name(),
+               context.size(),
+               index.toShortPrettyString());
+
   if (!index.pprev) {
     return state.Invalid(block_t::name() + "-bad-containing-prev",
                          "It is forbidden to add payloads to bootstrap block");
@@ -94,13 +109,17 @@ bool AltTree::addPayloads(index_t& index,
 }
 
 bool AltTree::validatePayloads(const AltBlock& block,
-                               const payloads_t& p,
+                               const std::vector<alt_payloads_t>& alt_payloads,
+                               const std::vector<vbk_payloads_t>& vbk_payloads,
+                               const std::vector<vbk_block_t>& context,
                                ValidationState& state) {
-  return validatePayloads(block.getHash(), p, state);
+  return validatePayloads(block.getHash(), alt_payloads, vbk_payloads, context, state);
 }
 
 bool AltTree::validatePayloads(const AltBlock::hash_t& block_hash,
-                               const payloads_t& p,
+                               const std::vector<alt_payloads_t>& alt_payloads,
+                               const std::vector<vbk_payloads_t>& vbk_payloads,
+                               const std::vector<vbk_block_t>& context,
                                ValidationState& state) {
   auto* index = getBlockIndex(block_hash);
 
@@ -109,7 +128,7 @@ bool AltTree::validatePayloads(const AltBlock::hash_t& block_hash,
                          "Can't find containing block");
   }
 
-  if (!addPayloads(*index, {p}, state)) {
+  if (!addPayloads(*index, alt_payloads, vbk_payloads, context, state)) {
     VBK_LOG_DEBUG(
         "%s Can not add payloads: %s", block_t::name(), state.toString());
     return state.Invalid(block_t::name() + "-addPayloadsTemporarily");
@@ -119,7 +138,9 @@ bool AltTree::validatePayloads(const AltBlock::hash_t& block_hash,
     VBK_LOG_DEBUG("%s Statefully invalid payloads: %s",
                   block_t::name(),
                   state.toString());
-    removePayloads(*index, {p.getId()});
+
+    // TODO remove payloads
+    //removePayloads(*index, {p.getId()});
     return state.Invalid(block_t::name() + "-addPayloadsTemporarily");
   }
 
@@ -193,14 +214,11 @@ void AltTree::payloadsToCommands(const payloads_t& p,
     commands.push_back(std::move(cmd));
   }
 
-  // third, add ATV endorsement
-  if (p.popData.hasAtv) {
-    addBlock(vbk(), p.popData.atv.containingBlock, commands);
+  addBlock(vbk(), p.popData.atv.containingBlock, commands);
 
-    auto e = AltEndorsement::fromContainerPtr(p);
-    auto cmd = std::make_shared<AddAltEndorsement>(vbk(), *this, std::move(e));
-    commands.push_back(std::move(cmd));
-  }
+  auto e = AltEndorsement::fromContainerPtr(p);
+  auto cmd = std::make_shared<AddAltEndorsement>(vbk(), *this, std::move(e));
+  commands.push_back(std::move(cmd));
 }
 
 bool AltTree::saveToStorage(PopStorage& storage, ValidationState& state) {
@@ -318,8 +336,7 @@ void AltTree::removePayloads(index_t& index, const std::vector<pid_t>& pids) {
   }
 
   for (const auto& pid : pids) {
-    auto it =
-        std::find(index.payloadIds.begin(), index.payloadIds.end(), pid);
+    auto it = std::find(index.payloadIds.begin(), index.payloadIds.end(), pid);
     if (it == index.payloadIds.end()) {
       // TODO: error message
       continue;
@@ -331,7 +348,7 @@ void AltTree::removePayloads(index_t& index, const std::vector<pid_t>& pids) {
     }
 
     index.payloadIds.erase(it);
-    //TODO: do we want to erase payloads from repository?
+    // TODO: do we want to erase payloads from repository?
   }
 }
 

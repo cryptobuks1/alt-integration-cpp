@@ -15,7 +15,6 @@
 #include "veriblock/blockchain/command.hpp"
 #include "veriblock/blockchain/command_group.hpp"
 #include "veriblock/entities/endorsements.hpp"
-#include "veriblock/entities/payloads.hpp"
 #include "veriblock/logger.hpp"
 #include "veriblock/validation_state.hpp"
 #include "veriblock/write_stream.hpp"
@@ -25,7 +24,7 @@ namespace altintegration {
 enum BlockStatus : uint8_t {
   //! default state for validity - validity state is unknown
   BLOCK_VALID_UNKNOWN = 0,
-  //! acceptBlock succeded. All parents are at least at this state.
+  //! acceptBlock succeded. All parents are at leasI'm probably making a novice mistake t at this state.
   BLOCK_VALID_TREE = 1,
   //! addPayloads succeded. All parents are at least BLOCK_VALID_TREE
   BLOCK_VALID_PAYLOADS = 2,

@@ -55,7 +55,6 @@ TestCase setupTestCase() {
     payloads.endorsed.height = 142;
     payloads.endorsed.previousBlock = generateRandomBytesVector(32);
     payloads.endorsed.timestamp = 3214;
-    payloads.popData.hasAtv = true;
     payloads.popData.atv = atv;
     payloads.popData.version = 2;
     payloads.popData.vtbs = { vtb };

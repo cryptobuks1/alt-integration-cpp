@@ -6,14 +6,14 @@
 #ifndef ALT_INTEGRATION_INCLUDE_VERIBLOCK_STORAGE_PAYLOADS_STORAGE_HPP_
 #define ALT_INTEGRATION_INCLUDE_VERIBLOCK_STORAGE_PAYLOADS_STORAGE_HPP_
 
-#include <veriblock/entities/payloads.hpp>
+#include <veriblock/entities/atv.hpp>
 #include <veriblock/entities/vtb.hpp>
 #include <veriblock/storage/storage_exceptions.hpp>
 #include <veriblock/storage/payloads_base_storage.hpp>
 
 namespace altintegration {
 
-class PayloadsStorage : public PayloadsBaseStorage<AltPayloads>,
+class PayloadsStorage : public PayloadsBaseStorage<ATV>,
                         public PayloadsBaseStorage<VTB> {
  public:
   virtual ~PayloadsStorage() = default;

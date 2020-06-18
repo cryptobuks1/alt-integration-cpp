@@ -2,7 +2,6 @@
 #define ALT_INTEGRATION_INCLUDE_VERIBLOCK_STORAGE_POP_STORAGE_HPP_
 
 #include <map>
-#include <veriblock/entities/payloads.hpp>
 #include <veriblock/entities/vtb.hpp>
 #include <veriblock/blockchain/block_index.hpp>
 #include <veriblock/storage/block_repository_inmem.hpp>

@@ -23,8 +23,7 @@ struct PopData {
   int32_t version{};
 
   std::vector<VbkBlock> vbk_context;
-  bool hasAtv{false};
-  ATV atv{};
+  std::vector<ATV> atvs{};
   std::vector<VTB> vtbs{};
 
   /**
@@ -52,12 +51,6 @@ struct PopData {
    * @return bytes data
    */
   std::vector<uint8_t> toVbkEncoding() const;
-
-  /**
-   * Return true if contains endorsement data
-   * @return true if contains endorsement data
-   */
-  bool containsEndorsements() const;
 
   /**
    * Calculate a Payloads id that is the sha256 hash of the payloads rawBytes
@@ -97,19 +90,11 @@ JsonValue ToJSON(const PopData& p, bool verbose) {
   if (verbose) {
     json::putArrayKV(obj, "vbkblocks", p.vbk_context);
     json::putArrayKV(obj, "vtbs", p.vtbs);
-    if (p.hasAtv) {
-      json::putKV(obj, "atv", ToJSON<JsonValue>(p.atv));
-    } else {
-      json::putNullKV(obj, "atv");
-    }
+    json::putArrayKV(obj, "atv", p.atvs);
   } else {
     detail::putArrayOfIds(obj, "vbkblocks", p.vbk_context);
     detail::putArrayOfIds(obj, "vtbs", p.vtbs);
-    if (p.hasAtv) {
-      json::putKV(obj, "atv", ToJSON<JsonValue>(p.atv.getId()));
-    } else {
-      json::putNullKV(obj, "atv");
-    }
+    detail::putArrayOfIds(obj, "atvs", p.atvs);
   }
 
   return obj;
