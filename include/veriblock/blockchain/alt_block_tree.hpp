@@ -73,10 +73,60 @@ struct AltTree : public BaseBlockTree<AltBlock> {
 
   bool acceptBlock(const AltBlock& block, ValidationState& state);
 
-  void removePayloads(index_t& index, const std::vector<pid_t>& pids);
+  void removePayloads(index_t& index, const PopData& popData);
 
   void removePayloads(const AltBlock::hash_t& containing,
-                      const std::vector<pid_t>& pids);
+                      const PopData& popData);
+
+  template <typename pop_t>
+  void removePayloads(index_t& index,
+                      const std::vector<pop_t>& payloads,
+                      bool set_state = true) {
+    VBK_LOG_INFO("%s remove %d %s payloads from %s",
+                 block_t::name(),
+                 payloads.size(),
+                 pop_t::name(),
+                 index.toShortPrettyString());
+
+    if (set_state) {
+      if (!index.pprev) {
+        // we do not add payloads to genesis block, therefore we do not have to
+        // remove them
+        return;
+      }
+
+      bool isOnActiveChain = activeChain_.contains(&index);
+      if (isOnActiveChain) {
+        VBK_ASSERT(index.pprev && "can not remove payloads from genesis block");
+        ValidationState dummy;
+        bool ret = setTip(*dynamic_cast<index_t*>(index.pprev), dummy, false);
+        VBK_ASSERT(ret);
+      }
+    }
+
+    std::vector<typename pop_t::id_t> pids(payloads.size());
+    for (size_t i = 0; i < payloads.size(); ++i) {
+      pids[i] = payloads[i].getId();
+    }
+
+    auto& payloadIds = index.getPayloadIds<pop_t>();
+
+    for (const auto& pid : pids) {
+      auto it = std::find(payloadIds.begin(), payloadIds.end(), pid);
+      if (it == payloadIds.end()) {
+        // TODO: error message
+        continue;
+      }
+
+      auto stored_payload = storagePayloads_.loadPayloads<alt_payloads_t>(pid);
+      if (!payloads.valid) {
+        revalidateSubtree(index, BLOCK_FAILED_POP, false);
+      }
+
+      payloadIds.erase(it);
+      // TODO: do we want to erase payloads from repository?
+    }
+  }
 
   bool addPayloads(index_t& index,
                    const PopData& popData,
@@ -92,7 +142,7 @@ struct AltTree : public BaseBlockTree<AltBlock> {
                    ValidationState& state) {
     VBK_LOG_INFO("%s add %d alt payloads to block %s",
                  block_t::name(),
-                 payloads.atvs.size(),
+                 payloads.size(),
                  index.toShortPrettyString());
 
     if (!index.pprev) {
@@ -144,7 +194,11 @@ struct AltTree : public BaseBlockTree<AltBlock> {
     return addPayloads(containing.hash, popData, state);
   }
 
-  void payloadsToCommands(const PopData& popData,
+  void payloadsToCommands(const ATV& atv, std::vector<CommandPtr>& commands);
+
+  void payloadsToCommands(const VTB& vtb, std::vector<CommandPtr>& commands);
+
+  void payloadsToCommands(const VbkBlock& block,
                           std::vector<CommandPtr>& commands);
 
   bool saveToStorage(PopStorage& storage, ValidationState& state);

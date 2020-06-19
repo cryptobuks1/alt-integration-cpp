@@ -21,7 +21,7 @@ void forEachNodePostorder(
   auto copy = index.pnext;
   for (auto* pnext : copy) {
     VBK_ASSERT(pnext != nullptr);
-    forEachNodePostorder(*pnext, visit);
+    forEachNodePostorder(*dynamic_cast<BlockIndex<Block>*>(pnext), visit);
   }
 
   visit(index);
@@ -41,7 +41,7 @@ void forEachNodePreorder(BlockIndex<Block>& index,
   auto copy = index.pnext;
   for (auto* pnext : copy) {
     VBK_ASSERT(pnext != nullptr);
-    forEachNodePreorder(*pnext, visit);
+    forEachNodePreorder(*dynamic_cast<BlockIndex<Block>*>(pnext), visit);
   }
 }
 

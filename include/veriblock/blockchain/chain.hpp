@@ -166,7 +166,7 @@ struct Chain {
       if (workBlock->containingEndorsements.count(e.id)) {
         return workBlock;
       }
-      workBlock = workBlock->pprev;
+      workBlock = dynamic_cast<index_t*>(workBlock->pprev);
     }
 
     return nullptr;

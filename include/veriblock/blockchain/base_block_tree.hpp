@@ -85,7 +85,7 @@ struct BaseBlockTree {
     bool isOnMainChain = activeChain_.contains(&toRemove);
     if (isOnMainChain) {
       ValidationState dummy;
-      bool ret = this->setTip(*prev, dummy, false);
+      bool ret = this->setTip(*dynamic_cast<index_t*>(prev), dummy, false);
       VBK_ASSERT(ret);
     }
 
@@ -95,7 +95,7 @@ struct BaseBlockTree {
         toRemove, [&](index_t& next) { removeSingleBlock(next); });
 
     // after removal, try to add tip
-    tryAddTip(prev);
+    tryAddTip(dynamic_cast<index_t*>(prev));
 
     if (isOnMainChain) {
       updateTips(shouldDetermineBestChain);
@@ -150,7 +150,7 @@ struct BaseBlockTree {
     }
 
     // after invalidation, try to add tip
-    tryAddTip(toBeInvalidated.pprev);
+    tryAddTip(dynamic_cast<index_t*>(toBeInvalidated.pprev));
 
     updateTips(shouldDetermineBestChain);
   }
@@ -176,12 +176,13 @@ struct BaseBlockTree {
     tryAddTip(&toBeValidated);
 
     for (auto* pnext : toBeValidated.pnext) {
-      forEachNodePreorder<block_t>(*pnext, [&](index_t& index) -> bool {
-        doReValidate(index, BLOCK_FAILED_CHILD);
-        bool valid = index.isValid();
-        tryAddTip(&index);
-        return valid;
-      });
+      forEachNodePreorder<block_t>(*dynamic_cast<index_t*>(pnext),
+                                   [&](index_t& index) -> bool {
+                                     doReValidate(index, BLOCK_FAILED_CHILD);
+                                     bool valid = index.isValid();
+                                     tryAddTip(&index);
+                                     return valid;
+                                   });
     }
 
     updateTips(shouldDetermineBestChain);

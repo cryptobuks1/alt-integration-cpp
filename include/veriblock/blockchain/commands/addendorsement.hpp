@@ -118,7 +118,8 @@ struct AddEndorsement : public Command {
         "failed to roll back AddEndorsement: the containing block does not "
         "exist");
 
-    auto* endorsed = containing->getAncestor(e_->endorsedHeight);
+    auto* endorsed = dynamic_cast<protected_index_t*>(
+        containing->getAncestor(e_->endorsedHeight));
     VBK_ASSERT(
         endorsed != nullptr &&
         "failed to roll back AddEndorsement: the endorsed block does not "
@@ -133,8 +134,8 @@ struct AddEndorsement : public Command {
       auto& id = e_->id;
 
       // find and erase the last occurrence of e_
-      auto endorsed_it = std::find_if(
-          v.rbegin(), v.rend(), [&id](endorsement_t* p) {
+      auto endorsed_it =
+          std::find_if(v.rbegin(), v.rend(), [&id](endorsement_t* p) {
             return p->id == id;
           });
 
