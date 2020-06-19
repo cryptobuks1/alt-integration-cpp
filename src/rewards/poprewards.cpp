@@ -46,12 +46,13 @@ PopRewardsBigDecimal PopRewards::calculateDifficulty(
     const VbkBlockTree& vbk_tree, const BlockIndex<AltBlock>& tip) const {
   PopRewardsBigDecimal difficulty = 0.0;
   auto rewardParams = calculator_.getAltParams().getRewardParams();
-  const BlockIndex<AltBlock>* currentBlock = tip.pprev;
+  const BlockIndex<AltBlock>* currentBlock =
+      dynamic_cast<BlockIndex<AltBlock>*>(tip.pprev);
 
   for (size_t i = 0; i < rewardParams.difficultyAveragingInterval(); i++) {
     if (currentBlock == nullptr) break;
     difficulty += scoreFromEndorsements(vbk_tree, *currentBlock);
-    currentBlock = currentBlock->pprev;
+    currentBlock = dynamic_cast<BlockIndex<AltBlock>*>(currentBlock->pprev);
   }
 
   difficulty /=

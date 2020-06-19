@@ -96,7 +96,7 @@ uint32_t getNextWorkRequired(const BlockIndex<BtcBlock>& prevBlock,
         while (pindex->pprev &&
                pindex->height % params.getDifficultyAdjustmentInterval() != 0 &&
                pindex->getDifficulty() == nProofOfWorkLimit)
-          pindex = pindex->pprev;
+          pindex = dynamic_cast<BlockIndex<BtcBlock>*>(pindex->pprev);
         return pindex->getDifficulty();
       }
     }
@@ -125,7 +125,8 @@ int64_t getMedianTimePast(const BlockIndex<BtcBlock>& prev) {
   auto* pend = &pmedian[medianTimeSpan];
 
   const BlockIndex<BtcBlock>* pindex = &prev;
-  for (int i = 0; i < medianTimeSpan && pindex; i++, pindex = pindex->pprev) {
+  for (int i = 0; i < medianTimeSpan && pindex;
+       i++, pindex = dynamic_cast<BlockIndex<BtcBlock>*>(pindex->pprev)) {
     *(--pbegin) = pindex->getBlockTime();
   }
 

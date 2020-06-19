@@ -22,7 +22,7 @@ struct PopData {
 
   int32_t version{};
 
-  std::vector<VbkBlock> vbk_context;
+  std::vector<VbkBlock> context;
   std::vector<ATV> atvs{};
   std::vector<VTB> vtbs{};
 
@@ -59,6 +59,8 @@ struct PopData {
 
   id_t getHash() const;
 
+  id_t getId() const { return getHash(); }
+
   friend bool operator==(const PopData& a, const PopData& b) {
     // clang-format off
     return a.toVbkEncoding() == b.toVbkEncoding();
@@ -88,11 +90,11 @@ JsonValue ToJSON(const PopData& p, bool verbose) {
   json::putIntKV(obj, "version", p.version);
 
   if (verbose) {
-    json::putArrayKV(obj, "vbkblocks", p.vbk_context);
+    json::putArrayKV(obj, "vbkblocks", p.context);
     json::putArrayKV(obj, "vtbs", p.vtbs);
     json::putArrayKV(obj, "atv", p.atvs);
   } else {
-    detail::putArrayOfIds(obj, "vbkblocks", p.vbk_context);
+    detail::putArrayOfIds(obj, "vbkblocks", p.context);
     detail::putArrayOfIds(obj, "vtbs", p.vtbs);
     detail::putArrayOfIds(obj, "atvs", p.atvs);
   }

@@ -11,7 +11,6 @@
 #include <veriblock/reversed_range.hpp>
 
 #include "veriblock/algorithm.hpp"
-#include "veriblock/fmt.hpp"
 #include "veriblock/rewards/poprewards.hpp"
 #include "veriblock/rewards/poprewards_calculator.hpp"
 #include "veriblock/stateless_validation.hpp"
@@ -41,85 +40,42 @@ bool AltTree::bootstrap(ValidationState& state) {
 }
 
 bool AltTree::addPayloads(const AltBlock::hash_t& containing,
-                          const std::vector<alt_payloads_t>& alt_payloads,
-                          const std::vector<vbk_payloads_t>& vbk_payloads,
-                          const std::vector<vbk_block_t>& context,
+                          const PopData& popData,
                           ValidationState& state) {
   auto* index = getBlockIndex(containing);
   if (!index) {
     return state.Invalid(block_t::name() + "-bad-block",
                          "Can't find containing block");
   }
-  return addPayloads(*index, alt_payloads, vbk_payloads, context, state);
+  return addPayloads(*index, popData, state);
 }
 
 bool AltTree::addPayloads(index_t& index,
-                          const std::vector<alt_payloads_t>& alt_payloads,
-                          const std::vector<vbk_payloads_t>& vbk_payloads,
-                          const std::vector<vbk_block_t>& context,
+                          const PopData& popData,
                           ValidationState& state) {
-  VBK_LOG_INFO("%s add %d alt payloads to block %s",
-               block_t::name(),
-               alt_payloads.size(),
-               index.toShortPrettyString());
-
-  VBK_LOG_INFO("%s add %d vbk payloads to block %s",
-               block_t::name(),
-               vbk_payloads.size(),
-               index.toShortPrettyString());
-
-  VBK_LOG_INFO("%s add %d context to block %s",
-               block_t::name(),
-               context.size(),
-               index.toShortPrettyString());
-
-  if (!index.pprev) {
-    return state.Invalid(block_t::name() + "-bad-containing-prev",
-                         "It is forbidden to add payloads to bootstrap block");
+  if (!addPayloads(index, popData.context, state)) {
+    return false;
   }
 
-  if (!index.isValid()) {
-    return state.Invalid(block_t::name() + "-bad-chain",
-                         "Containing block has been marked as invalid");
+  if (!addPayloads(index, popData.vtbs, state)) {
+    return false;
   }
 
-  bool isOnActiveChain = activeChain_.contains(&index);
-  if (isOnActiveChain) {
-    ValidationState dummy;
-    bool ret = setTip(*index.pprev, dummy, false);
-    VBK_ASSERT(ret);
-  }
-
-  std::set<pid_t> existingPids(index.payloadIds.begin(),
-                               index.payloadIds.end());
-  for (const auto& p : payloads) {
-    auto pid = p.getId();
-    if (!existingPids.insert(pid).second) {
-      return state.Invalid(
-          block_t::name() + "-duplicate-payloads",
-          fmt::sprintf("Containing block=%s already contains payload %s.",
-                       index.toPrettyString(),
-                       pid.toHex()));
-    }
-    index.payloadIds.push_back(pid);
-    storagePayloads_.savePayloads(p);
+  if (!addPayloads(index, popData.atvs, state)) {
+    return false;
   }
 
   return true;
 }
 
 bool AltTree::validatePayloads(const AltBlock& block,
-                               const std::vector<alt_payloads_t>& alt_payloads,
-                               const std::vector<vbk_payloads_t>& vbk_payloads,
-                               const std::vector<vbk_block_t>& context,
+                               const PopData& popData,
                                ValidationState& state) {
-  return validatePayloads(block.getHash(), alt_payloads, vbk_payloads, context, state);
+  return validatePayloads(block.getHash(), popData, state);
 }
 
 bool AltTree::validatePayloads(const AltBlock::hash_t& block_hash,
-                               const std::vector<alt_payloads_t>& alt_payloads,
-                               const std::vector<vbk_payloads_t>& vbk_payloads,
-                               const std::vector<vbk_block_t>& context,
+                               const PopData& popData,
                                ValidationState& state) {
   auto* index = getBlockIndex(block_hash);
 
@@ -128,7 +84,7 @@ bool AltTree::validatePayloads(const AltBlock::hash_t& block_hash,
                          "Can't find containing block");
   }
 
-  if (!addPayloads(*index, alt_payloads, vbk_payloads, context, state)) {
+  if (!addPayloads(*index, popData, state)) {
     VBK_LOG_DEBUG(
         "%s Can not add payloads: %s", block_t::name(), state.toString());
     return state.Invalid(block_t::name() + "-addPayloadsTemporarily");
@@ -140,7 +96,7 @@ bool AltTree::validatePayloads(const AltBlock::hash_t& block_hash,
                   state.toString());
 
     // TODO remove payloads
-    //removePayloads(*index, {p.getId()});
+    // removePayloads(*index, {p.getId()});
     return state.Invalid(block_t::name() + "-addPayloadsTemporarily");
   }
 
@@ -185,14 +141,16 @@ std::map<std::vector<uint8_t>, int64_t> AltTree::getPopPayout(
     return {};
   }
 
-  auto* endorsedBlock = index->getAncestorBlocksBehind(
-      alt_config_->getEndorsementSettlementInterval());
+  auto* endorsedBlock =
+      dynamic_cast<const index_t*>(index->getAncestorBlocksBehind(
+          alt_config_->getEndorsementSettlementInterval()));
   if (endorsedBlock == nullptr) {
     state.Error("Not enough blocks to get the endorsed block");
     return {};
   }
 
-  auto popDifficulty = rewards_.calculateDifficulty(vbk(), *endorsedBlock);
+  auto popDifficulty = rewards_.calculateDifficulty(
+      vbk(), *endorsedBlock);
   auto ret = rewards_.calculatePayouts(vbk(), *endorsedBlock, popDifficulty);
   VBK_LOG_DEBUG("Pop Difficulty=%s for block %s, paying to %d addresses",
                 popDifficulty.toPrettyString(),
@@ -201,7 +159,7 @@ std::map<std::vector<uint8_t>, int64_t> AltTree::getPopPayout(
   return ret;
 }
 
-void AltTree::payloadsToCommands(const payloads_t& p,
+void AltTree::payloadsToCommands(const PopData& popData,
                                  std::vector<CommandPtr>& commands) {
   // first, add vbk context
   for (const auto& b : p.popData.vbk_context) {
@@ -331,9 +289,10 @@ void AltTree::removePayloads(index_t& index, const std::vector<pid_t>& pids) {
   if (isOnActiveChain) {
     VBK_ASSERT(index.pprev && "can not remove payloads from genesis block");
     ValidationState dummy;
-    bool ret = setTip(*index.pprev, dummy, false);
+    bool ret = setTip(*dynamic_cast<index_t*>(index.pprev), dummy, false);
     VBK_ASSERT(ret);
   }
+
 
   for (const auto& pid : pids) {
     auto it = std::find(index.payloadIds.begin(), index.payloadIds.end(), pid);
@@ -342,7 +301,7 @@ void AltTree::removePayloads(index_t& index, const std::vector<pid_t>& pids) {
       continue;
     }
 
-    auto payloads = storagePayloads_.loadPayloads<payloads_t>(pid);
+    auto payloads = storagePayloads_.loadPayloads<alt_payloads_t>(pid);
     if (!payloads.valid) {
       revalidateSubtree(index, BLOCK_FAILED_POP, false);
     }

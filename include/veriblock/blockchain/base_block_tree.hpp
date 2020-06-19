@@ -132,14 +132,16 @@ struct BaseBlockTree {
     bool isOnMainChain = activeChain_.contains(&toBeInvalidated);
     if (isOnMainChain) {
       ValidationState dummy;
-      bool ret = this->setTip(*toBeInvalidated.pprev, dummy, false);
+      bool ret = this->setTip(
+          *dynamic_cast<index_t*>(toBeInvalidated.pprev), dummy, false);
       VBK_ASSERT(ret);
     }
 
     doInvalidate(toBeInvalidated, reason);
 
     // flag next subtrees (excluding current block) as BLOCK_FAILED_CHILD
-    for (auto* pnext : toBeInvalidated.pnext) {
+    for (auto* ptr : toBeInvalidated.pnext) {
+      auto* pnext = dynamic_cast<index_t*>(ptr);
       forEachNodePreorder<block_t>(*pnext, [&](index_t& index) {
         bool valid = index.isValid();
         doInvalidate(index, BLOCK_FAILED_CHILD);
@@ -233,7 +235,7 @@ struct BaseBlockTree {
       return;
     }
 
-    auto it = tips_.find(index->pprev);
+    auto it = tips_.find(dynamic_cast<index_t*>(index->pprev));
     if (it != tips_.end()) {
       // we found prev block in chainTips
       tips_.erase(it);

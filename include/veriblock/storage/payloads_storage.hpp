@@ -8,6 +8,7 @@
 
 #include <veriblock/blockchain/command_group.hpp>
 #include <veriblock/entities/atv.hpp>
+#include <veriblock/entities/vbkblock.hpp>
 #include <veriblock/entities/vtb.hpp>
 #include <veriblock/storage/payloads_base_storage.hpp>
 #include <veriblock/storage/storage_exceptions.hpp>
@@ -15,7 +16,8 @@
 namespace altintegration {
 
 class PayloadsStorage : public PayloadsBaseStorage<ATV>,
-                        public PayloadsBaseStorage<VTB> {
+                        public PayloadsBaseStorage<VTB>,
+                        public PayloadsBaseStorage<VbkBlock> {
  public:
   virtual ~PayloadsStorage() = default;
 

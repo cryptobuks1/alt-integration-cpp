@@ -146,7 +146,7 @@ struct PopStateMachine {
 
       if (!applyBlock(*index, state)) {
         // rollback the previously appled slice of the chain
-        unapply(*index->pprev, from);
+        unapply(*dynamic_cast<index_t*>(index->pprev), from);
         return false;
       }
     }

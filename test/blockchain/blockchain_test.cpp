@@ -8,7 +8,7 @@
 #include <veriblock/blockchain/blocktree.hpp>
 
 #include "util/visualize.hpp"
-#include "veriblock/blockchain/block_index.hpp"
+#include "veriblock/blockchain/base_block_index1.hpp"
 #include "veriblock/blockchain/btc_blockchain_util.hpp"
 #include "veriblock/blockchain/miner.hpp"
 #include "veriblock/blockchain/vbk_blockchain_util.hpp"

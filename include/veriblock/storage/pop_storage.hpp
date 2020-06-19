@@ -2,11 +2,11 @@
 #define ALT_INTEGRATION_INCLUDE_VERIBLOCK_STORAGE_POP_STORAGE_HPP_
 
 #include <map>
-#include <veriblock/entities/vtb.hpp>
 #include <veriblock/blockchain/block_index.hpp>
+#include <veriblock/entities/vtb.hpp>
 #include <veriblock/storage/block_repository_inmem.hpp>
-#include <veriblock/storage/endorsement_storage.hpp>
 #include <veriblock/storage/blocks_storage.hpp>
+#include <veriblock/storage/endorsement_storage.hpp>
 #include <veriblock/storage/storage_exceptions.hpp>
 
 namespace altintegration {

@@ -15,11 +15,12 @@
 
 #include "veriblock/blockchain/alt_chain_params.hpp"
 #include "veriblock/blockchain/base_block_tree.hpp"
-#include "veriblock/blockchain/block_index.hpp"
 #include "veriblock/blockchain/chain.hpp"
 #include "veriblock/blockchain/pop/fork_resolution.hpp"
 #include "veriblock/blockchain/pop/vbk_block_tree.hpp"
 #include "veriblock/entities/altblock.hpp"
+#include "veriblock/entities/popdata.hpp"
+#include "veriblock/fmt.hpp"
 #include "veriblock/rewards/poprewards.hpp"
 #include "veriblock/validation_state.hpp"
 
@@ -78,27 +79,72 @@ struct AltTree : public BaseBlockTree<AltBlock> {
                       const std::vector<pid_t>& pids);
 
   bool addPayloads(index_t& index,
-                   const std::vector<alt_payloads_t>& alt_payloads,
-                   const std::vector<vbk_payloads_t>& vbk_payloads,
-                   const std::vector<vbk_block_t>& context,
+                   const PopData& popData,
                    ValidationState& state);
 
+  template <typename pop_t,
+            typename = typename std::enable_if<
+                std::is_same<pop_t, alt_payloads_t>::value ||
+                std::is_same<pop_t, vbk_payloads_t>::value ||
+                std::is_same<pop_t, vbk_block_t>::value>::type>
+  bool addPayloads(index_t& index,
+                   const std::vector<pop_t>& payloads,
+                   ValidationState& state) {
+    VBK_LOG_INFO("%s add %d alt payloads to block %s",
+                 block_t::name(),
+                 payloads.atvs.size(),
+                 index.toShortPrettyString());
+
+    if (!index.pprev) {
+      return state.Invalid(
+          block_t::name() + "-bad-containing-prev",
+          "It is forbidden to add payloads to bootstrap block");
+    }
+
+    if (!index.isValid()) {
+      return state.Invalid(block_t::name() + "-bad-chain",
+                           "Containing block has been marked as invalid");
+    }
+
+    bool isOnActiveChain = activeChain_.contains(&index);
+    if (isOnActiveChain) {
+      ValidationState dummy;
+      bool ret = setTip(*dynamic_cast<index_t*>(index.pprev), dummy, false);
+      VBK_ASSERT(ret);
+    }
+
+    auto& payloadIds = index.getPayloadIds<pop_t>();
+
+    std::set<pid_t> existingPids(payloadIds.begin(), payloadIds.end());
+
+    for (const auto& p : payloads) {
+      auto pid = p.getId();
+      if (!existingPids.insert(pid).second) {
+        return state.Invalid(
+            block_t::name() + "-duplicate-payloads",
+            fmt::sprintf("Containing block=%s already contains payload %s.",
+                         index.toPrettyString(),
+                         pid.toHex()));
+      }
+
+      payloadIds.push_back(pid);
+      storagePayloads_.savePayloads(p);
+    }
+
+    return true;
+  }
+
   bool addPayloads(const AltBlock::hash_t& containing,
-                   const std::vector<alt_payloads_t>& alt_payloads,
-                   const std::vector<vbk_payloads_t>& vbk_payloads,
-                   const std::vector<vbk_block_t>& context,
+                   const PopData& popData,
                    ValidationState& state);
 
   bool addPayloads(const AltBlock& containing,
-                   const std::vector<alt_payloads_t>& alt_payloads,
-                   const std::vector<vbk_payloads_t>& vbk_payloads,
-                   const std::vector<vbk_block_t>& context,
+                   const PopData& popData,
                    ValidationState& state) {
-    return addPayloads(
-        containing.hash, alt_payloads, vbk_payloads, context, state);
+    return addPayloads(containing.hash, popData, state);
   }
 
-  void payloadsToCommands(const alt_payloads_t& p,
+  void payloadsToCommands(const PopData& popData,
                           std::vector<CommandPtr>& commands);
 
   bool saveToStorage(PopStorage& storage, ValidationState& state);
@@ -122,15 +168,11 @@ struct AltTree : public BaseBlockTree<AltBlock> {
       const AltBlock::hash_t& tip, ValidationState& state);
 
   bool validatePayloads(const AltBlock& block,
-                        const std::vector<alt_payloads_t>& alt_payloads,
-                        const std::vector<vbk_payloads_t>& vbk_payloads,
-                        const std::vector<vbk_block_t>& context,
+                        const PopData& popData,
                         ValidationState& state);
 
   bool validatePayloads(const AltBlock::hash_t& block_hash,
-                        const std::vector<alt_payloads_t>& alt_payloads,
-                        const std::vector<vbk_payloads_t>& vbk_payloads,
-                        const std::vector<vbk_block_t>& context,
+                        const PopData& popData,
                         ValidationState& state);
 
   VbkBlockTree& vbk() { return cmp_.getProtectingBlockTree(); }

@@ -8,7 +8,7 @@
 #include <memory>
 
 #include "block_headers.hpp"
-#include "veriblock/blockchain/block_index.hpp"
+#include "veriblock/blockchain/base_block_index1.hpp"
 #include "veriblock/blockchain/blocktree.hpp"
 #include "veriblock/literals.hpp"
 

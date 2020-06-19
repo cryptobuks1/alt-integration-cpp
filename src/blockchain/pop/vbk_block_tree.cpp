@@ -4,13 +4,13 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 #include <veriblock/algorithm.hpp>
+#include <veriblock/blockchain/blockchain_storage_util.hpp>
 #include <veriblock/blockchain/commands/commands.hpp>
 #include <veriblock/blockchain/pop/vbk_block_tree.hpp>
 #include <veriblock/context.hpp>
 #include <veriblock/finalizer.hpp>
 #include <veriblock/logger.hpp>
 #include <veriblock/reversed_range.hpp>
-#include <veriblock/blockchain/blockchain_storage_util.hpp>
 
 namespace altintegration {
 
@@ -145,7 +145,7 @@ void VbkBlockTree::removePayloads(const block_t& block,
   if (isOnActiveChain) {
     VBK_ASSERT(index->pprev && "can not remove payloads from genesis block");
     ValidationState dummy;
-    bool ret = setTip(*index->pprev, dummy, false);
+    bool ret = setTip(*dynamic_cast<index_t*>(index->pprev), dummy, false);
     VBK_ASSERT(ret);
   }
 
@@ -221,7 +221,7 @@ bool VbkBlockTree::addPayloads(const VbkBlock::hash_t& hash,
     }
 
     ValidationState dummy;
-    bool ret = setTip(*index->pprev, dummy, false);
+    bool ret = setTip(*dynamic_cast<index_t*>(index->pprev), dummy, false);
     VBK_ASSERT(ret);
   }
 
@@ -262,8 +262,7 @@ void VbkBlockTree::payloadsToCommands(const payloads_t& p,
 
   // add endorsement
   auto e = VbkEndorsement::fromContainerPtr(p);
-  auto cmd =
-      std::make_shared<AddVbkEndorsement>(btc(), *this, std::move(e));
+  auto cmd = std::make_shared<AddVbkEndorsement>(btc(), *this, std::move(e));
   commands.push_back(std::move(cmd));
 }
 
@@ -274,7 +273,7 @@ bool VbkBlockTree::saveToStorage(PopStorage& storage, ValidationState& state) {
 }
 
 bool VbkBlockTree::loadFromStorage(const PopStorage& storage,
-                              ValidationState& state) {
+                                   ValidationState& state) {
   bool ret = loadBlocks(storage, btc(), state);
   if (!ret) return state.IsValid();
   return loadBlocks(storage, *this, state);

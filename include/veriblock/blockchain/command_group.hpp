@@ -15,7 +15,7 @@ namespace altintegration {
 struct CommandGroup {
   using storage_t = std::vector<CommandPtr>;
 
-  // ATV id or VTB id
+  // ATV id or VTB id or VBK block id
   uint256 id;
   storage_t commands;
   bool valid{true};
