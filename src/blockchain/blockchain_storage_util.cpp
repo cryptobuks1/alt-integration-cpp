@@ -95,8 +95,6 @@ bool loadBlocks(const PopStorage& storage,
                 BlockTree<BtcBlock, BtcChainParams>& tree,
                 ValidationState& state) {
   using BtcBlockTree = BlockTree<BtcBlock, BtcChainParams>;
-  using block_t = typename BtcBlockTree::block_t;
-  using endorsement_t = typename block_t::endorsement_t;
 
   auto blocks = storage.loadBlocks<typename BtcBlockTree::index_t>();
   auto tipStored = storage.loadTip<typename BtcBlockTree::index_t>();

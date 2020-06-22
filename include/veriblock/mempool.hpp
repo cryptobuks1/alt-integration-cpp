@@ -43,7 +43,9 @@ struct MemPool {
       : alt_chain_params_(&alt_param),
         vbk_chain_params_(&vbk_params),
         btc_chain_params_(&btc_params),
-        hasher(function) {}
+        hasher(function) {
+    (void)hasher;
+  }
 
   // @deprecated - use submit<VTB>
   bool submitVTB(const std::vector<VTB>& vtb, ValidationState& state);

@@ -80,7 +80,7 @@ bool MemPool::applyPayloads(const AltBlock& hack_block,
   VBK_ASSERT(ret);
 
   // apply vbk_context
-  for (const auto& b : popdata.vbk_context) {
+  for (const auto& b : popdata.context) {
     ret = tree.vbk().acceptBlock(b, state);
     VBK_ASSERT(ret);
   }
@@ -104,7 +104,7 @@ bool MemPool::applyPayloads(const AltBlock& hack_block,
     auto endorsement = VbkEndorsement::fromContainer(vtb);
     Chain<BlockIndex<VbkBlock>> chain(start_height, containing_block_index);
     auto duplicate =
-        chain.findBlockContainingEndorsement(endorsement, settlement_interval);
+        findBlockContainingEndorsement(chain, endorsement, settlement_interval);
 
     // invalid vtb
     if (duplicate) {
@@ -117,7 +117,7 @@ bool MemPool::applyPayloads(const AltBlock& hack_block,
     ++it;
   }
 
-  for (const auto& b : reverse_iterate(popdata.vbk_context)) {
+  for (const auto& b : reverse_iterate(popdata.context)) {
     tree.vbk().removeSubtree(b.getHash());
   }
 
@@ -186,8 +186,8 @@ std::vector<PopData> MemPool::getPop(AltTree& tree) {
         !atv->context.empty() ? atv->context[0] : atv->containingBlock;
 
     if (!checkConnectivityWithTree(first_block, tree.vbk())) {
-      if (fillContext(first_block, popTx.vbk_context, tree)) {
-        fillVTBs(popTx.vtbs, popTx.vbk_context);
+      if (fillContext(first_block, popTx.context, tree)) {
+        fillVTBs(popTx.vtbs, popTx.context);
         popTx.atvs.push_back(*atv);
         if (applyPayloads(hack_block, popTx, tree, state)) {
           popTxs.push_back(popTx);
@@ -210,11 +210,14 @@ std::vector<PopData> MemPool::getPop(AltTree& tree) {
 void MemPool::removePayloads(const std::vector<PopData>& PopDatas) {
   for (const auto& tx : PopDatas) {
     // clear context
-    for (const auto& b : tx.vbk_context) {
+    for (const auto& b : tx.context) {
       vbkblocks_.erase(b.getShortHash());
     }
 
-    stored_atvs_.erase(tx.atv.getId());
+    // clear atvs
+    for (const auto& atv : tx.atvs) {
+      stored_vtbs_.erase(atv.getId());
+    }
 
     // clear vtbs
     for (const auto& vtb : tx.vtbs) {
