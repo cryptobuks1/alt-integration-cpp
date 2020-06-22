@@ -13,11 +13,11 @@
 #include <vector>
 
 #include "veriblock/arith_uint256.hpp"
+#include "veriblock/entities/dummy.hpp"
 #include "veriblock/fmt.hpp"
 #include "veriblock/hashutil.hpp"
 #include "veriblock/serde.hpp"
 #include "veriblock/uint.hpp"
-#include "veriblock/entities/dummy.hpp"
 
 namespace altintegration {
 

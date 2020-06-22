@@ -42,8 +42,7 @@ class PopStorage : public EndorsementStorage<AltEndorsement>,
   }
 
   template <typename Endorsements>
-  void saveEndorsements(const Endorsements&
-          endorsements) {
+  void saveEndorsements(const Endorsements& endorsements) {
     bool ret = EndorsementStorage<Endorsements>::erepo_->put(endorsements);
     if (!ret) {
       throw BadIOException(fmt::sprintf("Failed to write endorsements: %s",
@@ -52,7 +51,8 @@ class PopStorage : public EndorsementStorage<AltEndorsement>,
   }
 
   template <typename StoredBlock>
-  std::multimap<typename StoredBlock::height_t, std::shared_ptr<StoredBlock>> loadBlocks() const {
+  std::multimap<typename StoredBlock::height_t, std::shared_ptr<StoredBlock>>
+  loadBlocks() const {
     auto cursor = BlocksStorage<StoredBlock>::brepo_->newCursor();
     if (cursor == nullptr) {
       throw BadIOException("Cannot create BlockRepository cursor");
@@ -68,26 +68,11 @@ class PopStorage : public EndorsementStorage<AltEndorsement>,
     return blocks;
   }
 
+  // realisation in the alt_block_tree, vbk_block_tree
   template <typename StoredBlock>
   void saveBlocks(
       const std::unordered_map<typename StoredBlock::prev_hash_t,
-                               std::shared_ptr<StoredBlock>>& blocks) {
-
-    auto batch = BlocksStorage<StoredBlock>::brepo_->newBatch();
-    if (batch == nullptr) {
-      throw BadIOException("Cannot create BlockRepository write batch");
-    }
-
-    for (const auto& block : blocks) {
-      auto& index = *(block.second);
-      batch->put(index);
-
-      for (const auto& e : index.containingEndorsements) {
-        saveEndorsements<typename StoredBlock::endorsement_t>(*e.second);
-      }
-    }
-    batch->commit();
-  }
+                               std::shared_ptr<StoredBlock>>& blocks);
 
   template <typename StoredBlock>
   std::pair<typename StoredBlock::height_t, typename StoredBlock::hash_t>

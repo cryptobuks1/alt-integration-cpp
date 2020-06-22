@@ -110,7 +110,7 @@ struct PopStateMachine {
                   to.toPrettyString());
 
     for (auto* current : reverse_iterate(chain)) {
-      if (current->payloadIds.empty()) {
+      if (current->payloadsIdsEmpty()) {
         continue;
       }
 

@@ -51,6 +51,8 @@ struct BlockIndex<VbkBlock> : public BaseBlockIndex<VbkBlock> {
   //! list of changes introduced in this block
   std::vector<pid_t> payloadIds;
 
+  bool payloadsIdsEmpty() const { return payloadIds.empty(); }
+
   std::string toPrettyString(size_t level = 0) const {
     return fmt::sprintf(
         "%s%sBlockIndex{height=%d, hash=%s, status=%d, endorsedBy=%d}",
@@ -91,6 +93,11 @@ struct BlockIndex<AltBlock> : public BaseBlockIndex<AltBlock> {
   std::vector<pid_t> alt_payloadIds;
   std::vector<VTB::id_t> vbk_payloadIds;
   std::vector<VbkBlock::id_t> vbk_blockIds;
+
+  bool payloadsIdsEmpty() const {
+    return alt_payloadIds.empty() && vbk_payloadIds.empty() &&
+           vbk_blockIds.empty();
+  }
 
   template <typename pop_t>
   std::vector<typename pop_t::id_t>& getPayloadIds();

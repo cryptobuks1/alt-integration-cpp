@@ -120,7 +120,7 @@ struct AltTree : public BaseBlockTree<AltBlock> {
       }
 
       auto stored_payload = storagePayloads_.loadPayloads<alt_payloads_t>(pid);
-      if (!payloads.valid) {
+      if (!stored_payload.valid) {
         revalidateSubtree(index, BLOCK_FAILED_POP, false);
       }
 
@@ -268,6 +268,11 @@ struct AltTree : public BaseBlockTree<AltBlock> {
 template <>
 std::vector<CommandGroup> PayloadsStorage::loadCommands<AltTree>(
     const typename AltTree::index_t& index, AltTree& tree);
+
+template <>
+void PopStorage::saveBlocks(
+    const std::unordered_map<typename AltBlock::prev_hash_t,
+        std::shared_ptr<BlockIndex<AltBlock>>>& blocks);
 
 template <typename JsonValue>
 JsonValue ToJSON(const BlockIndex<AltBlock>& i) {

@@ -320,4 +320,40 @@ std::vector<CommandGroup> PayloadsStorage::loadCommands<VbkBlockTree>(
   return out;
 }
 
+template <>
+void PopStorage::saveBlocks(
+    const std::unordered_map<typename BtcBlock::prev_hash_t,
+                             std::shared_ptr<BlockIndex<BtcBlock>>>& blocks) {
+  auto batch = BlocksStorage<BlockIndex<BtcBlock>>::brepo_->newBatch();
+  if (batch == nullptr) {
+    throw BadIOException("Cannot create BlockRepository write batch");
+  }
+
+  for (const auto& block : blocks) {
+    auto& index = *(block.second);
+    batch->put(index);
+  }
+  batch->commit();
+}
+
+template <>
+void PopStorage::saveBlocks(
+    const std::unordered_map<typename VbkBlock::prev_hash_t,
+                             std::shared_ptr<BlockIndex<VbkBlock>>>& blocks) {
+  auto batch = BlocksStorage<BlockIndex<VbkBlock>>::brepo_->newBatch();
+  if (batch == nullptr) {
+    throw BadIOException("Cannot create BlockRepository write batch");
+  }
+
+  for (const auto& block : blocks) {
+    auto& index = *(block.second);
+    batch->put(index);
+
+    for (const auto& e : index.containingEndorsements) {
+      saveEndorsements<typename VbkBlock::endorsement_t>(*e.second);
+    }
+  }
+  batch->commit();
+}
+
 }  // namespace altintegration

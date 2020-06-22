@@ -95,9 +95,19 @@ struct VbkBlockTree : public BlockTree<VbkBlock, VbkChainParams> {
   PayloadsStorage& storagePayloads_;
 };
 
-template<>
+template <>
 std::vector<CommandGroup> PayloadsStorage::loadCommands<VbkBlockTree>(
     const typename VbkBlockTree::index_t& index, VbkBlockTree& tree);
+
+template <>
+void PopStorage::saveBlocks(
+    const std::unordered_map<typename BtcBlock::prev_hash_t,
+                             std::shared_ptr<BlockIndex<BtcBlock>>>& blocks);
+
+template <>
+void PopStorage::saveBlocks(
+    const std::unordered_map<typename VbkBlock::prev_hash_t,
+                             std::shared_ptr<BlockIndex<VbkBlock>>>& blocks);
 
 template <typename JsonValue>
 JsonValue ToJSON(const BlockIndex<VbkBlock>& i) {

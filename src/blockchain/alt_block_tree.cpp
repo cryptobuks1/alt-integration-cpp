@@ -5,7 +5,6 @@
 
 #include "veriblock/blockchain/alt_block_tree.hpp"
 
-#include <unordered_set>
 #include <veriblock/blockchain/blockchain_storage_util.hpp>
 #include <veriblock/blockchain/commands/commands.hpp>
 #include <veriblock/reversed_range.hpp>
@@ -13,7 +12,6 @@
 #include "veriblock/algorithm.hpp"
 #include "veriblock/rewards/poprewards.hpp"
 #include "veriblock/rewards/poprewards_calculator.hpp"
-#include "veriblock/stateless_validation.hpp"
 
 namespace altintegration {
 
@@ -365,6 +363,26 @@ std::vector<CommandGroup> PayloadsStorage::loadCommands<AltTree>(
   out.insert(out.end(), payloads_out.begin(), payloads_out.end());
 
   return out;
+}
+
+template <>
+void PopStorage::saveBlocks(
+    const std::unordered_map<typename AltBlock::prev_hash_t,
+                             std::shared_ptr<BlockIndex<AltBlock>>>& blocks) {
+  auto batch = BlocksStorage<BlockIndex<AltBlock>>::brepo_->newBatch();
+  if (batch == nullptr) {
+    throw BadIOException("Cannot create BlockRepository write batch");
+  }
+
+  for (const auto& block : blocks) {
+    auto& index = *(block.second);
+    batch->put(index);
+
+    for (const auto& e : index.containingEndorsements) {
+      saveEndorsements<typename AltBlock::endorsement_t>(*e.second);
+    }
+  }
+  batch->commit();
 }
 
 template <>

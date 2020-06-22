@@ -16,7 +16,6 @@
 #include "veriblock/blockchain/btc_chain_params.hpp"
 #include "veriblock/blockchain/vbk_chain_params.hpp"
 #include "veriblock/entities/atv.hpp"
-#include "veriblock/entities/payloads.hpp"
 #include "veriblock/entities/popdata.hpp"
 #include "veriblock/entities/vtb.hpp"
 
