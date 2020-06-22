@@ -6,157 +6,202 @@
 #ifndef ALT_INTEGRATION_INCLUDE_VERIBLOCK_BLOCKCHAIN_BLOCK_INDEX_HPP_
 #define ALT_INTEGRATION_INCLUDE_VERIBLOCK_BLOCKCHAIN_BLOCK_INDEX_HPP_
 
-#include "veriblock/blockchain/base_block_index.hpp"
-#include "veriblock/entities/altblock.hpp"
-#include "veriblock/entities/atv.hpp"
-#include "veriblock/entities/btcblock.hpp"
-#include "veriblock/entities/vbkblock.hpp"
-#include "veriblock/entities/vtb.hpp"
+#include <memory>
+#include <set>
+#include <unordered_map>
+#include <vector>
+
+#include "veriblock/arith_uint256.hpp"
+#include "veriblock/blockchain/command.hpp"
+#include "veriblock/blockchain/command_group.hpp"
+#include "veriblock/entities/endorsements.hpp"
+#include "veriblock/logger.hpp"
+#include "veriblock/validation_state.hpp"
+#include "veriblock/write_stream.hpp"
 
 namespace altintegration {
 
-template <typename Block>
-struct BlockIndex;
+enum BlockStatus : uint8_t {
+  //! default state for validity - validity state is unknown
+  BLOCK_VALID_UNKNOWN = 0,
+  //! acceptBlock succeded. All parents are at least at this state.
+  BLOCK_VALID_TREE = 1,
+  //! addPayloads succeded. All parents are at least BLOCK_VALID_TREE
+  BLOCK_VALID_PAYLOADS = 2,
+  //! all validity flags
+  BLOCK_VALID_MASK = BLOCK_VALID_TREE | BLOCK_VALID_PAYLOADS,
+  //! block is statelessly valid, but we marked it as failed
+  BLOCK_FAILED_BLOCK = 4,
+  //! block failed POP validation
+  BLOCK_FAILED_POP = 8,
+  //! block is state{lessly,fully} valid, but some of previous blocks is invalid
+  BLOCK_FAILED_CHILD = 16,
+  //! all invalidity flags
+  BLOCK_FAILED_MASK = BLOCK_FAILED_CHILD | BLOCK_FAILED_POP | BLOCK_FAILED_BLOCK
+};
 
-template <>
-struct BlockIndex<BtcBlock> : public BaseBlockIndex<BtcBlock> {
-  ~BlockIndex() override = default;
+//! Store block
+template <typename Block>
+struct BlockIndex : public Block::addon_t {
+  using block_t = Block;
+  using hash_t = typename block_t::hash_t;
+  using prev_hash_t = typename block_t::prev_hash_t;
+  using height_t = typename block_t::height_t;
+
+  //! (memory only) pointer to a previous block
+  BlockIndex* pprev = nullptr;
+
+  //! (memory only) a set of pointers for forward iteration
+  std::set<BlockIndex*> pnext{};
+
+  //! height of the entry in the chain
+  height_t height = 0;
+
+  //! block header
+  std::shared_ptr<block_t> header{};
+
+  //! contains status flags
+  uint8_t status = 0;  // unknown validity
+
+  bool isValid(enum BlockStatus upTo = BLOCK_VALID_TREE) const {
+    VBK_ASSERT(!(upTo & ~BLOCK_VALID_MASK));  // Only validity flags allowed.
+    if ((status & BLOCK_FAILED_MASK) != 0u) {
+      // block failed
+      return false;
+    }
+    return ((status & BLOCK_VALID_MASK) >= upTo);
+  }
+
+  void setNull() {
+    Block::addon_t::setNull();
+    this->pprev = nullptr;
+    this->pnext.clear();
+    this->height = 0;
+    this->status = 0;
+  }
+
+  bool raiseValidity(enum BlockStatus upTo) {
+    VBK_ASSERT(!(upTo & ~BLOCK_VALID_MASK));  // Only validity flags allowed.
+    if ((status & BLOCK_FAILED_MASK) != 0u) {
+      return false;
+    }
+    if ((status & BLOCK_VALID_MASK) < upTo) {
+      status = (status & ~BLOCK_VALID_MASK) | upTo;
+      return true;
+    }
+    return false;
+  }
+
+  void setFlag(enum BlockStatus s) { this->status |= s; }
+
+  void unsetFlag(enum BlockStatus s) { this->status &= ~s; }
+
+  bool hasFlags(enum BlockStatus s) const { return this->status & s; }
+
+  hash_t getHash() const { return header->getHash(); }
+  uint32_t getBlockTime() const { return header->getBlockTime(); }
+  uint32_t getDifficulty() const { return header->getDifficulty(); }
+
+  bool isValidTip() const {
+    // can be a valid tip iff there're no next blocks or all next blocks are
+    // invalid
+    return isValid() &&
+           (pnext.empty() ||
+            std::all_of(pnext.begin(), pnext.end(), [](BlockIndex* index) {
+              return !index->isValid();
+            }));
+  }
+
+  const BlockIndex* getAncestorBlocksBehind(height_t steps) const {
+    if (steps < 0 || steps > this->height + 1) {
+      return nullptr;
+    }
+
+    return this->getAncestor(this->height + 1 - steps);
+  }
+
+  BlockIndex* getAncestor(height_t _height) const {
+    if (_height < 0 || _height > this->height) {
+      return nullptr;
+    }
+
+    // TODO: this algorithm is not optimal. for O(n) seek backwards until we hit
+    // valid height. also it assumes whole blockchain is in memory (pprev is
+    // valid until given height)
+    BlockIndex* index = const_cast<BlockIndex*>(this);
+    while (index != nullptr) {
+      if (index->height > _height) {
+        index = index->pprev;
+      } else if (index->height == _height) {
+        return index;
+      } else {
+        return nullptr;
+      }
+    }
+
+    return nullptr;
+  }
 
   std::string toPrettyString(size_t level = 0) const {
     return fmt::sprintf("%s%sBlockIndex{height=%d, hash=%s, status=%d}",
                         std::string(level, ' '),
-                        BtcBlock::name(),
+                        Block::name(),
                         height,
                         HexStr(getHash()),
                         status);
   }
-};
 
-template <>
-struct BlockIndex<VbkBlock> : public BaseBlockIndex<VbkBlock> {
-  ~BlockIndex() override = default;
-
-  using endorsement_t = typename VbkBlock::endorsement_t;
-  using eid_t = typename endorsement_t::id_t;
-  using payloads_t = typename VbkBlock::payloads_t;
-  using pid_t = typename payloads_t ::id_t;
-
-  //! list of containing endorsements in this block
-  std::unordered_map<eid_t, std::shared_ptr<endorsement_t>>
-      containingEndorsements{};
-
-  //! list of endorsements pointing to this block
-  std::vector<endorsement_t*> endorsedBy;
-
-  //! list of changes introduced in this block
-  std::vector<pid_t> payloadIds;
-
-  bool payloadsIdsEmpty() const { return payloadIds.empty(); }
-
-  std::string toPrettyString(size_t level = 0) const {
-    return fmt::sprintf(
-        "%s%sBlockIndex{height=%d, hash=%s, status=%d, endorsedBy=%d}",
-        std::string(level, ' '),
-        BtcBlock::name(),
-        height,
-        HexStr(getHash()),
-        status,
-        endorsedBy.size());
+  std::string toShortPrettyString() const {
+    return fmt::sprintf("%s:%d:%s", Block::name(), height, HexStr(getHash()));
   }
 
-  void setNull() override {
-    BaseBlockIndex<VbkBlock>::setNull();
+  void toRaw(WriteStream& stream) const {
+    stream.writeBE<uint32_t>(height);
+    header.toRaw(stream);
+  }
 
-    this->containingEndorsements.clear();
-    this->endorsedBy.clear();
-    this->payloadIds.clear();
+  std::vector<uint8_t> toRaw() const {
+    WriteStream stream;
+    toRaw(stream);
+    return stream.data();
+  }
+
+  static BlockIndex fromRaw(ReadStream& stream) {
+    BlockIndex index{};
+    index.height = stream.readBE<uint32_t>();
+    index.header = Block::fromRaw(stream);
+    return index;
+  }
+
+  static BlockIndex fromRaw(const std::string& bytes) {
+    ReadStream stream(bytes);
+    return fromRaw(stream);
+  }
+
+  friend bool operator==(const BlockIndex& a, const BlockIndex& b) {
+    return *a.header == *b.header;
+  }
+
+  friend bool operator!=(const BlockIndex& a, const BlockIndex& b) {
+    return !operator==(a, b);
   }
 };
 
-template <>
-struct BlockIndex<AltBlock> : public BaseBlockIndex<AltBlock> {
-  ~BlockIndex() override = default;
+template <typename Block>
+void PrintTo(const BlockIndex<Block>& b, ::std::ostream* os) {
+  *os << b.toPrettyString();
+}
 
-  using endorsement_t = typename AltBlock::endorsement_t;
-  using eid_t = typename endorsement_t::id_t;
-  using payloads_t = typename AltBlock::payloads_t;
-  using pid_t = typename payloads_t ::id_t;
-
-  //! list of containing endorsements in this block
-  std::unordered_map<eid_t, std::shared_ptr<endorsement_t>>
-      containingEndorsements{};
-
-  //! list of endorsements pointing to this block
-  std::vector<endorsement_t*> endorsedBy;
-
-  //! list of changes introduced in this block
-  std::vector<pid_t> alt_payloadIds;
-  std::vector<VTB::id_t> vbk_payloadIds;
-  std::vector<VbkBlock::id_t> vbk_blockIds;
-
-  bool payloadsIdsEmpty() const {
-    return alt_payloadIds.empty() && vbk_payloadIds.empty() &&
-           vbk_blockIds.empty();
-  }
-
-  template <typename pop_t>
-  std::vector<typename pop_t::id_t>& getPayloadIds();
-
-  template <>
-  std::vector<typename ATV::id_t>& getPayloadIds<ATV>() {
-    return alt_payloadIds;
-  }
-
-  template <>
-  std::vector<typename VTB::id_t>& getPayloadIds<VTB>() {
-    return vbk_payloadIds;
-  }
-
-  template <>
-  std::vector<typename VbkBlock::id_t>& getPayloadIds<VbkBlock>() {
-    return vbk_blockIds;
-  }
-
-  template <typename pop_t>
-  const std::vector<typename pop_t::id_t>& getPayloadIds() const;
-
-  template <>
-  const std::vector<typename ATV::id_t>& getPayloadIds<ATV>() const {
-    return alt_payloadIds;
-  }
-
-  template <>
-  const std::vector<typename VTB::id_t>& getPayloadIds<VTB>() const {
-    return vbk_payloadIds;
-  }
-
-  template <>
-  const std::vector<typename VbkBlock::id_t>& getPayloadIds<VbkBlock>() const {
-    return vbk_blockIds;
-  }
-
-  std::string toPrettyString(size_t level = 0) const {
-    return fmt::sprintf(
-        "%s%sBlockIndex{height=%d, hash=%s, status=%d, endorsedBy=%d}",
-        std::string(level, ' '),
-        BtcBlock::name(),
-        height,
-        HexStr(getHash()),
-        status,
-        endorsedBy.size());
-  }
-
-  void setNull() override {
-    BaseBlockIndex<AltBlock>::setNull();
-
-    this->containingEndorsements.clear();
-    this->endorsedBy.clear();
-    this->alt_payloadIds.clear();
-    this->vbk_payloadIds.clear();
-    this->vbk_blockIds.clear();
-  }
-};
+// template <typename JsonValue, typename Block>
+// JsonValue ToJSON(const BlockIndex<Block>& i) {
+//  auto obj = json::makeEmptyObject<JsonValue>();
+//  json::putStringKV(obj, "chainWork", i.chainWork.toHex());
+//  json::putIntKV(obj, "height", i.height);
+//  json::putKV(obj, "header", ToJSON<JsonValue>(*i.header));
+//  json::putIntKV(obj, "status", i.status);
+//  json::putIntKV(obj, "ref", i.refCounter);
+//  return obj;
+//}
 
 }  // namespace altintegration
-
-#endif
+#endif  // ALT_INTEGRATION_INCLUDE_VERIBLOCK_BLOCKCHAIN_BLOCK_INDEX_HPP_

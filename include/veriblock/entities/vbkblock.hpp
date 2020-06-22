@@ -11,6 +11,8 @@
 #include <vector>
 
 #include "veriblock/arith_uint256.hpp"
+#include "veriblock/blockchain/vbk_block_addon.hpp"
+#include "veriblock/entities/btcblock.hpp"
 #include "veriblock/entities/endorsements.hpp"
 #include "veriblock/fmt.hpp"
 #include "veriblock/hashutil.hpp"
@@ -19,7 +21,7 @@
 
 namespace altintegration {
 
-struct BtcBlock;
+struct VbkBlockAddon;
 
 struct VbkBlock {
   using hash_t = uint192;
@@ -28,9 +30,8 @@ struct VbkBlock {
   using prev_hash_t = short_hash_t;
   using height_t = int32_t;
   using keystone_t = uint72;
-  using payloads_t = VTB;
-  using endorsement_t = VbkEndorsement;
   using protecting_block_t = BtcBlock;
+  using addon_t = VbkBlockAddon;
 
   int32_t height{};
   int16_t version{};
@@ -42,7 +43,7 @@ struct VbkBlock {
   int32_t difficulty{};
   int32_t nonce{};
 
-  //TODO: remove on command group cache implemented
+  // TODO: remove on command group cache implemented
   // flag to mark invalid command groups.
   bool valid{};
 

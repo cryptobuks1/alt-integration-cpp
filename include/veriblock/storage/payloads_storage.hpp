@@ -10,6 +10,7 @@
 #include <veriblock/entities/atv.hpp>
 #include <veriblock/entities/vbkblock.hpp>
 #include <veriblock/entities/vtb.hpp>
+#include <veriblock/storage/storage_exceptions.hpp>
 #include <veriblock/storage/payloads_base_storage.hpp>
 #include <veriblock/storage/storage_exceptions.hpp>
 
@@ -43,11 +44,6 @@ class PayloadsStorage : public PayloadsBaseStorage<ATV>,
     }
   }
 
-  template <typename BlockTree>
-  std::vector<CommandGroup> loadCommands(
-      const std::vector<typename DummyPayloads::id_t>&, BlockTree&) {
-    return {};
-  }
 
   // realisation in the alt_block_tree, vbK_block_tree
   template <typename BlockTree>

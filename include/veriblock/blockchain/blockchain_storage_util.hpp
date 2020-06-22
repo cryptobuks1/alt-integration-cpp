@@ -6,7 +6,9 @@
 #ifndef ALT_INTEGRATION_INCLUDE_VERIBLOCK_BLOCKCHAIN_BLOCKCHAIN_STORAGE_UTIL_HPP_
 #define ALT_INTEGRATION_INCLUDE_VERIBLOCK_BLOCKCHAIN_BLOCKCHAIN_STORAGE_UTIL_HPP_
 
+#include <veriblock/blockchain/alt_block_tree.hpp>
 #include <veriblock/blockchain/blocktree.hpp>
+#include <veriblock/blockchain/pop/vbk_block_tree.hpp>
 #include <veriblock/storage/pop_storage.hpp>
 #include <veriblock/validation_state.hpp>
 
@@ -17,11 +19,6 @@ void saveBlocks(PopStorage& storage, const BlockTree& tree) {
   storage.saveBlocks(tree.getBlocks());
   storage.saveTip(*tree.getBestChain().tip());
 }
-
-struct AltTree;
-struct VbkBlockTree;
-struct BtcBlock;
-struct BtcChainParams;
 
 template <typename BlockTree>
 bool loadBlocks(const PopStorage& storage,

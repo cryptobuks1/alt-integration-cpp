@@ -108,7 +108,7 @@ struct Chain {
       if (index->height < startHeight_) break;
       innerHeight = toInnerHeight(index->height);
       chain[innerHeight] = index;
-      index = dynamic_cast<index_t*>(index->pprev);
+      index = index->pprev;
     }
   }
 
@@ -131,10 +131,10 @@ struct Chain {
 
     auto lastHeight = chainHeight();
     if (pindex->height > lastHeight) {
-      pindex = dynamic_cast<index_t*>(pindex->getAncestor(lastHeight));
+      pindex = pindex->getAncestor(lastHeight);
     }
     while (pindex && !contains(pindex)) {
-      pindex = dynamic_cast<index_t*>(pindex->pprev);
+      pindex = pindex->pprev;
     }
     return const_cast<index_t*>(pindex);
   }
@@ -148,7 +148,7 @@ struct Chain {
     auto* current = tip();
     while (current) {
       ret.insert(current->getHash());
-      current = dynamic_cast<index_t*>(current->pprev);
+      current = current->pprev;
     }
 
     return ret;

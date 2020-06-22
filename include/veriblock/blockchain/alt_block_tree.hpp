@@ -39,7 +39,7 @@ struct AltTree : public BaseBlockTree<AltBlock> {
   using index_t = BlockIndex<AltBlock>;
   using endorsement_t = typename index_t::endorsement_t;
   using eid_t = typename endorsement_t::id_t;
-  using alt_payloads_t = typename AltBlock::payloads_t;
+  using alt_payloads_t = typename index_t::payloads_t;
   using vbk_payloads_t = VTB;
   using vbk_block_t = VbkBlock;
   using pid_t = typename alt_payloads_t::id_t;
@@ -110,7 +110,7 @@ struct AltTree : public BaseBlockTree<AltBlock> {
       pids[i] = payloads[i].getId();
     }
 
-    auto& payloadIds = index.getPayloadIds<pop_t>();
+    auto& payloadIds = index.getPayloadIds<pop_t, typename pop_t::id_t>();
 
     for (const auto& pid : pids) {
       auto it = std::find(payloadIds.begin(), payloadIds.end(), pid);
@@ -164,7 +164,7 @@ struct AltTree : public BaseBlockTree<AltBlock> {
       VBK_ASSERT(ret);
     }
 
-    auto& payloadIds = index.getPayloadIds<pop_t>();
+    auto& payloadIds = index.getPayloadIds<pop_t, typename pop_t::id_t>();
 
     std::set<typename pop_t::id_t> existingPids(payloadIds.begin(),
                                                 payloadIds.end());
@@ -272,7 +272,7 @@ std::vector<CommandGroup> PayloadsStorage::loadCommands<AltTree>(
 template <>
 void PopStorage::saveBlocks(
     const std::unordered_map<typename AltBlock::prev_hash_t,
-        std::shared_ptr<BlockIndex<AltBlock>>>& blocks);
+                             std::shared_ptr<BlockIndex<AltBlock>>>& blocks);
 
 template <typename JsonValue>
 JsonValue ToJSON(const BlockIndex<AltBlock>& i) {

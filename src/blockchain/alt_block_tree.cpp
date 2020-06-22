@@ -323,7 +323,7 @@ std::vector<CommandGroup> loadCommands_(
     const typename AltTree::index_t& index,
     AltTree& tree,
     const std::shared_ptr<PayloadsRepository<pop_t>>& prep) {
-  auto& pids = index.getPayloadIds<pop_t>();
+  auto& pids = index.getPayloadIds<pop_t, typename pop_t::id_t>();
   std::vector<CommandGroup> out{};
   for (const auto& pid : pids) {
     pop_t payloads;
@@ -379,7 +379,7 @@ void PopStorage::saveBlocks(
     batch->put(index);
 
     for (const auto& e : index.containingEndorsements) {
-      saveEndorsements<typename AltBlock::endorsement_t>(*e.second);
+      saveEndorsements<typename BlockIndex<AltBlock>::endorsement_t>(*e.second);
     }
   }
   batch->commit();

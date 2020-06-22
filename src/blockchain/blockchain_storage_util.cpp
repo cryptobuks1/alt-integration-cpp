@@ -15,7 +15,7 @@ bool loadBlocks(const PopStorage& storage,
                 AltTree& tree,
                 ValidationState& state) {
   using block_t = typename AltTree::block_t;
-  using endorsement_t = typename block_t::endorsement_t;
+  using endorsement_t = typename AltTree::index_t::endorsement_t;
 
   auto blocks = storage.loadBlocks<typename AltTree::index_t>();
   auto tipStored = storage.loadTip<typename AltTree::index_t>();
@@ -25,7 +25,6 @@ bool loadBlocks(const PopStorage& storage,
     bi->alt_payloadIds = blockPair.second->alt_payloadIds;
     bi->vbk_payloadIds = blockPair.second->vbk_payloadIds;
     bi->vbk_blockIds = blockPair.second->vbk_blockIds;
-    bi->refCounter = blockPair.second->refCounter;
 
     // load endorsements
     for (const auto& e : blockPair.second->containingEndorsements) {
@@ -56,7 +55,7 @@ bool loadBlocks(const PopStorage& storage,
                 VbkBlockTree& tree,
                 ValidationState& state) {
   using block_t = typename VbkBlockTree::block_t;
-  using endorsement_t = typename block_t::endorsement_t;
+  using endorsement_t = typename VbkBlockTree::index_t::endorsement_t;
 
   auto blocks = storage.loadBlocks<typename VbkBlockTree::index_t>();
   auto tipStored = storage.loadTip<typename VbkBlockTree::index_t>();

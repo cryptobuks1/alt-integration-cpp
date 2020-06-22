@@ -22,7 +22,7 @@ struct VbkBlockTree : public BlockTree<VbkBlock, VbkChainParams> {
   using VbkTree = BlockTree<VbkBlock, VbkChainParams>;
   using BtcTree = BlockTree<BtcBlock, BtcChainParams>;
   using index_t = VbkTree::index_t;
-  using payloads_t = typename VbkBlock::payloads_t;
+  using payloads_t = typename index_t::payloads_t;
   using pid_t = typename payloads_t::id_t;
   using endorsement_t = typename index_t::endorsement_t;
   using PopForkComparator = PopAwareForkResolutionComparator<VbkBlock,
