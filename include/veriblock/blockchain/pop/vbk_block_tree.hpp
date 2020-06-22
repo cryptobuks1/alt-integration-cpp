@@ -13,8 +13,8 @@
 #include <veriblock/blockchain/vbk_chain_params.hpp>
 #include <veriblock/entities/btcblock.hpp>
 #include <veriblock/finalizer.hpp>
-#include <veriblock/storage/pop_storage.hpp>
 #include <veriblock/storage/payloads_storage.hpp>
+#include <veriblock/storage/pop_storage.hpp>
 
 namespace altintegration {
 
@@ -94,6 +94,10 @@ struct VbkBlockTree : public BlockTree<VbkBlock, VbkChainParams> {
   PopForkComparator cmp_;
   PayloadsStorage& storagePayloads_;
 };
+
+template<>
+std::vector<CommandGroup> PayloadsStorage::loadCommands<VbkBlockTree>(
+    const typename VbkBlockTree::index_t& index, VbkBlockTree& tree);
 
 template <typename JsonValue>
 JsonValue ToJSON(const BlockIndex<VbkBlock>& i) {

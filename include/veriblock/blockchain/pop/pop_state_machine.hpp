@@ -33,8 +33,7 @@ struct PopStateMachine {
   // atomic: applies either all or none of the block's commands
   bool applyBlock(index_t& index, ValidationState& state) {
     std::vector<CommandPtr> executed;
-    auto cgs =
-        storage_.loadCommands<payloads_t, ProtectedTree>(index, ed_);
+    auto cgs = storage_.loadCommands<ProtectedTree>(index, ed_);
     // even if the block is marked as invalid, we still try to apply it
     for (const auto& cg : cgs) {
       VBK_LOG_DEBUG("Applying payload %s from block %s",
@@ -81,8 +80,7 @@ struct PopStateMachine {
 
   // atomic: applies either all of the block's commands or fails on an assert
   void unapplyBlock(const index_t& index) {
-    auto cgs =
-        storage_.loadCommands<payloads_t, ProtectedTree>(index.payloadIds, ed_);
+    auto cgs = storage_.loadCommands<ProtectedTree>(index, ed_);
     for (const auto& cg : reverse_iterate(cgs)) {
       VBK_LOG_DEBUG("Unapplying payload %s from block %s",
                     cg.id.toHex(),

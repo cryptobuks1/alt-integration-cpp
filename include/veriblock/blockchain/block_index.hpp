@@ -110,6 +110,24 @@ struct BlockIndex<AltBlock> : public BaseBlockIndex<AltBlock> {
     return vbk_blockIds;
   }
 
+  template <typename pop_t>
+  const std::vector<typename pop_t::id_t>& getPayloadIds() const;
+
+  template <>
+  const std::vector<typename ATV::id_t>& getPayloadIds<ATV>() const {
+    return alt_payloadIds;
+  }
+
+  template <>
+  const std::vector<typename VTB::id_t>& getPayloadIds<VTB>() const {
+    return vbk_payloadIds;
+  }
+
+  template <>
+  const std::vector<typename VbkBlock::id_t>& getPayloadIds<VbkBlock>() const {
+    return vbk_blockIds;
+  }
+
   std::string toPrettyString(size_t level = 0) const {
     return fmt::sprintf(
         "%s%sBlockIndex{height=%d, hash=%s, status=%d, endorsedBy=%d}",

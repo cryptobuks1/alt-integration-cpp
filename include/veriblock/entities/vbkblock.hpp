@@ -42,6 +42,10 @@ struct VbkBlock {
   int32_t difficulty{};
   int32_t nonce{};
 
+  //TODO: remove on command group cache implemented
+  // flag to mark invalid command groups.
+  bool valid{};
+
   std::string toPrettyString() const;
 
   static VbkBlock fromHex(const std::string& hex);

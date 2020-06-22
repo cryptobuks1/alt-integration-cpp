@@ -166,7 +166,8 @@ struct AltTree : public BaseBlockTree<AltBlock> {
 
     auto& payloadIds = index.getPayloadIds<pop_t>();
 
-    std::set<typename pop_t::id_t> existingPids(payloadIds.begin(), payloadIds.end());
+    std::set<typename pop_t::id_t> existingPids(payloadIds.begin(),
+                                                payloadIds.end());
 
     for (const auto& p : payloads) {
       auto pid = p.getId();
@@ -263,6 +264,10 @@ struct AltTree : public BaseBlockTree<AltBlock> {
               ValidationState& state,
               bool skipSetState = false) override;
 };
+
+template <>
+std::vector<CommandGroup> PayloadsStorage::loadCommands<AltTree>(
+    const typename AltTree::index_t& index, AltTree& tree);
 
 template <typename JsonValue>
 JsonValue ToJSON(const BlockIndex<AltBlock>& i) {

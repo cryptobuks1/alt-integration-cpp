@@ -299,4 +299,25 @@ void VbkBlockTree::removePayloads(const Blob<24>& hash,
   removePayloads(*index->header, pids);
 }
 
+template <>
+std::vector<CommandGroup> PayloadsStorage::loadCommands<VbkBlockTree>(
+    const typename VbkBlockTree::index_t& index, VbkBlockTree& tree) {
+  using pop_t = typename VbkBlockTree::index_t::payloads_t;
+
+  std::vector<CommandGroup> out{};
+  for (const auto& pid : index.payloadIds) {
+    pop_t payloads;
+    if (!PayloadsBaseStorage<pop_t>::prepo_->get(pid, &payloads)) {
+      throw StateCorruptedException(
+          fmt::sprintf("Failed to read payloads id={%s}", pid.toHex()));
+    }
+    CommandGroup cg;
+    cg.id = pid;
+    cg.valid = payloads.valid;
+    tree.payloadsToCommands(payloads, cg.commands);
+    out.push_back(cg);
+  }
+  return out;
+}
+
 }  // namespace altintegration

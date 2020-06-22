@@ -60,7 +60,6 @@ bool AltTree::addPayloads(index_t& index,
   if (!addPayloads(index, popData.vtbs, state)) {
     return false;
   }
-
   if (!addPayloads(index, popData.atvs, state)) {
     return false;
   }
@@ -319,6 +318,53 @@ bool AltTree::setTip(AltTree::index_t& to,
 
   // true if tip has been changed
   return changeTip;
+}
+
+template <typename pop_t>
+std::vector<CommandGroup> loadCommands_(
+    const typename AltTree::index_t& index,
+    AltTree& tree,
+    const std::shared_ptr<PayloadsRepository<pop_t>>& prep) {
+  auto& pids = index.getPayloadIds<pop_t>();
+  std::vector<CommandGroup> out{};
+  for (const auto& pid : pids) {
+    pop_t payloads;
+    if (!prep->get(pid, &payloads)) {
+      throw StateCorruptedException(
+          fmt::sprintf("Failed to read payloads id={%s}", pid.toHex()));
+    }
+    CommandGroup cg;
+    cg.id = pid;
+    cg.valid = payloads.valid;
+    tree.payloadsToCommands(payloads, cg.commands);
+    out.push_back(cg);
+  }
+  return out;
+}
+
+template <>
+std::vector<CommandGroup> PayloadsStorage::loadCommands<AltTree>(
+    const typename AltTree::index_t& index, AltTree& tree) {
+  using alt_payloads = typename AltTree::alt_payloads_t;
+  using vbk_payloads = typename AltTree::vbk_payloads_t;
+  using vbk_block_t = typename AltTree::vbk_block_t;
+
+  std::vector<CommandGroup> out{};
+  std::vector<CommandGroup> payloads_out;
+
+  payloads_out = loadCommands_<alt_payloads>(
+      index, tree, PayloadsBaseStorage<alt_payloads>::prepo_);
+  out.insert(out.end(), payloads_out.begin(), payloads_out.end());
+
+  payloads_out = loadCommands_<vbk_payloads>(
+      index, tree, PayloadsBaseStorage<vbk_payloads>::prepo_);
+  out.insert(out.end(), payloads_out.begin(), payloads_out.end());
+
+  payloads_out = loadCommands_<vbk_block_t>(
+      index, tree, PayloadsBaseStorage<vbk_block_t>::prepo_);
+  out.insert(out.end(), payloads_out.begin(), payloads_out.end());
+
+  return out;
 }
 
 template <>
