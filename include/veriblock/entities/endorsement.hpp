@@ -65,6 +65,15 @@ struct Endorsement {
                             const EndorsedHash& endorsedHash,
                             const EndorsedBlockHeight& endorsedHeight);
 
+  static std::shared_ptr<type> fromContainerPtr(
+      const Container& c,
+      const EndorsedHash& containingHash,
+      const EndorsedHash& endorsedHash,
+      const EndorsedBlockHeight& endorsedHeight) {
+    return std::make_shared<type>(
+        fromContainer(c, containingHash, endorsedHash, endorsedHeight));
+  }
+
   static std::shared_ptr<type> fromContainerPtr(const Container& c) {
     return std::make_shared<type>(fromContainer(c));
   }

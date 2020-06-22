@@ -154,10 +154,18 @@ std::map<std::vector<uint8_t>, int64_t> AltTree::getPopPayout(
 }
 
 void AltTree::payloadsToCommands(const ATV& atv,
+                                 const AltBlock& containing,
                                  std::vector<CommandPtr>& commands) {
   addBlock(vbk(), atv.containingBlock, commands);
 
-  auto e = AltEndorsement::fromContainerPtr(atv);
+  std::vector<uint8_t> endorsed_hash =
+      alt_config_->hashFunction(atv.transaction.publicationData.header);
+  auto* endorsed_index = getBlockIndex(endorsed_hash);
+  VBK_ASSERT(endorsed_index);
+
+  auto e = AltEndorsement::fromContainerPtr(
+      atv, containing.getHash(), endorsed_hash, endorsed_index->height);
+
   auto cmd = std::make_shared<AddAltEndorsement>(vbk(), *this, std::move(e));
   commands.push_back(std::move(cmd));
 }
@@ -334,6 +342,28 @@ std::vector<CommandGroup> loadCommands_(
     cg.id = pid;
     cg.valid = payloads.valid;
     tree.payloadsToCommands(payloads, cg.commands);
+    out.push_back(cg);
+  }
+  return out;
+}
+
+template <>
+std::vector<CommandGroup> loadCommands_(
+    const typename AltTree::index_t& index,
+    AltTree& tree,
+    const std::shared_ptr<PayloadsRepository<ATV>>& prep) {
+  auto& pids = index.getPayloadIds<ATV, typename ATV::id_t>();
+  std::vector<CommandGroup> out{};
+  for (const auto& pid : pids) {
+    ATV payloads;
+    if (!prep->get(pid, &payloads)) {
+      throw StateCorruptedException(
+          fmt::sprintf("Failed to read payloads id={%s}", pid.toHex()));
+    }
+    CommandGroup cg;
+    cg.id = pid;
+    cg.valid = payloads.valid;
+    tree.payloadsToCommands(payloads, *index.header, cg.commands);
     out.push_back(cg);
   }
   return out;

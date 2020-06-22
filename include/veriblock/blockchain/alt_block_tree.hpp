@@ -196,7 +196,9 @@ struct AltTree : public BaseBlockTree<AltBlock> {
     return addPayloads(containing.hash, popData, state);
   }
 
-  void payloadsToCommands(const ATV& atv, std::vector<CommandPtr>& commands);
+  void payloadsToCommands(const ATV& atv,
+                          const AltBlock& containing,
+                          std::vector<CommandPtr>& commands);
 
   void payloadsToCommands(const VTB& vtb, std::vector<CommandPtr>& commands);
 
