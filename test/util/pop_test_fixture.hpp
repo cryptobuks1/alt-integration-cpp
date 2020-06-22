@@ -142,43 +142,39 @@ struct PopTestFixture {
     out.insert(out.end(), ctx.begin(), ctx.end());
   }
 
-  PopData createPopData(int32_t version,
-                        const ATV& atv,
-                        std::vector<VTB> vtbs) {
+  PopData createPopData(int32_t version, ATV& atv, std::vector<VTB> vtbs) {
     PopData popData;
     popData.version = version;
 
     // fill vbk context
     for (auto& vtb : vtbs) {
       for (const auto& block : vtb.context) {
-        popData.vbk_context.push_back(block);
+        popData.context.push_back(block);
       }
-      popData.vbk_context.push_back(vtb.containingBlock);
+      popData.context.push_back(vtb.containingBlock);
       vtb.context.clear();
     }
 
     for (const auto& block : atv.context) {
-      popData.vbk_context.push_back(block);
+      popData.context.push_back(block);
     }
 
-    std::sort(popData.vbk_context.begin(),
-              popData.vbk_context.end(),
+    std::sort(popData.context.begin(),
+              popData.context.end(),
               [](const VbkBlock& a, const VbkBlock& b) {
                 return a.height < b.height;
               });
 
-    popData.atv = atv;
-    popData.atv.context.clear();
+    atv.context.clear();
+    popData.atvs.push_back(atv);
     popData.vtbs = vtbs;
 
     return popData;
   }
 
-  AltPayloads generateAltPayloads(const VbkTx& transaction,
-                                  const AltBlock& containing,
-                                  const AltBlock& endorsed,
-                                  const VbkBlock::hash_t& lastVbk,
-                                  int VTBs = 0) {
+  PopData generateAltPayloads(const std::vector<VbkTx>& transactions,
+                              const VbkBlock::hash_t& lastVbk,
+                              int VTBs = 0) {
     PopData popData;
 
     for (auto i = 0; i < VTBs; i++) {
@@ -188,39 +184,27 @@ struct PopTestFixture {
       popData.vtbs.push_back(newvtb);
     }
 
-    popData.atv = popminer->generateATV(transaction, lastVbk, state);
+    for (const auto& t : transactions) {
+      popData.atvs.push_back(popminer->generateATV(t, lastVbk, state));
+    }
 
-    fillVbkContext(popData.vbk_context,
-                   lastVbk,
-                   popData.atv.containingBlock.getHash(),
-                   popminer->vbk());
+    for (const auto& atv : popData.atvs) {
+      fillVbkContext(popData.context,
+                     lastVbk,
+                     atv.containingBlock.getHash(),
+                     popminer->vbk());
+    }
 
-    AltPayloads alt;
-    alt.popData = popData;
-    alt.containingBlock = containing;
-    alt.endorsed = endorsed;
-
-    return alt;
+    return popData;
   }
 
-  AltPayloads endorseAltBlock(const AltBlock& endorsed,
-                              const AltBlock& containing,
-                              int VTBs = 0) {
-    auto data = generatePublicationData(endorsed);
-    auto vbktx = popminer->createVbkTxEndorsingAltBlock(data);
-    return generateAltPayloads(
-        vbktx, containing, endorsed, getLastKnownVbkBlock(), VTBs);
-  }
-
-  AltPayloads generateAltPayloads(const PopData& popTx,
-                                  const AltBlock& containing,
-                                  const AltBlock& endorsed) {
-    AltPayloads alt;
-    alt.popData = popTx;
-    alt.containingBlock = containing;
-    alt.endorsed = endorsed;
-
-    return alt;
+  PopData endorseAltBlock(const std::vector<AltBlock>& endorsed, int VTBs = 0) {
+    std::vector<VbkTx> transactions(endorsed.size());
+    for (size_t i = 0; i < endorsed.size(); ++i) {
+      auto data = generatePublicationData(endorsed[i]);
+      transactions[i] = popminer->createVbkTxEndorsingAltBlock(data);
+    }
+    return generateAltPayloads(transactions, getLastKnownVbkBlock(), VTBs);
   }
 
   VbkBlock::hash_t getLastKnownVbkBlock() {

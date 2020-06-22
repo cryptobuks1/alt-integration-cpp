@@ -104,17 +104,16 @@ TEST_F(Scenario0, Scenario0) {
   containing.timestamp = 10002;
   containing.hash = std::vector<uint8_t>{1, 3, 3, 10};
 
-  AltPayloads payloads;
-  payloads.popData.atv = atv;
-  payloads.popData.vtbs = vtbs;
-  payloads.containingBlock = containing;
-  payloads.endorsed = endorsed;
+  // TODO correctly generate popData
+  PopData popData;
+  popData.atvs = {atv};
+  popData.vtbs = vtbs;
 
   ValidationState state;
   ASSERT_TRUE(alt->acceptBlock(endorsedPrev, state)) << state.toString();
   ASSERT_TRUE(alt->acceptBlock(endorsed, state)) << state.toString();
   ASSERT_TRUE(alt->acceptBlock(containing, state)) << state.toString();
-  ASSERT_TRUE(alt->addPayloads(containing.hash, {payloads}, state));
+  ASSERT_TRUE(alt->addPayloads(containing.hash, popData, state));
   ASSERT_FALSE(alt->setState(containing.hash, state));
   ASSERT_EQ("ALT-bad-command+VBK-bad-containing", state.GetPath());
 }

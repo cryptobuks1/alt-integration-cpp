@@ -141,7 +141,7 @@ void VbkBlockTree::removePayloads(const block_t& block,
   bool isOnActiveChain = activeChain_.contains(index);
   if (isOnActiveChain) {
     ValidationState dummy;
-    bool ret = setTip(*dynamic_cast<index_t*>(index->pprev), dummy, false);
+    bool ret = setTip(*index->pprev, dummy, false);
     VBK_ASSERT(ret);
   }
 
@@ -217,7 +217,7 @@ bool VbkBlockTree::addPayloads(const VbkBlock::hash_t& hash,
     }
 
     ValidationState dummy;
-    bool ret = setTip(*dynamic_cast<index_t*>(index->pprev), dummy, false);
+    bool ret = setTip(*index->pprev, dummy, false);
     VBK_ASSERT(ret);
   }
 

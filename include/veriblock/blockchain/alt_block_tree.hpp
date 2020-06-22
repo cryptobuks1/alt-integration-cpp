@@ -100,7 +100,7 @@ struct AltTree : public BaseBlockTree<AltBlock> {
       if (isOnActiveChain) {
         VBK_ASSERT(index.pprev && "can not remove payloads from genesis block");
         ValidationState dummy;
-        bool ret = setTip(*dynamic_cast<index_t*>(index.pprev), dummy, false);
+        bool ret = setTip(*index.pprev, dummy, false);
         VBK_ASSERT(ret);
       }
     }
@@ -160,7 +160,7 @@ struct AltTree : public BaseBlockTree<AltBlock> {
     bool isOnActiveChain = activeChain_.contains(&index);
     if (isOnActiveChain) {
       ValidationState dummy;
-      bool ret = setTip(*dynamic_cast<index_t*>(index.pprev), dummy, false);
+      bool ret = setTip(*index.pprev, dummy, false);
       VBK_ASSERT(ret);
     }
 
@@ -294,8 +294,7 @@ JsonValue ToJSON(const BlockIndex<AltBlock>& i) {
   return obj;
 }
 
-template <>
-ArithUint256 getBlockProof(const AltBlock&);
+uint8_t getBlockProof(const AltBlock&) { return 0; }
 
 }  // namespace altintegration
 

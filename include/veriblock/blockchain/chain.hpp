@@ -179,7 +179,7 @@ index_t* findBlockContainingEndorsement(
     if (workBlock->containingEndorsements.count(e.id)) {
       return workBlock;
     }
-    workBlock = dynamic_cast<index_t*>(workBlock->pprev);
+    workBlock = workBlock->pprev;
   }
 
   return nullptr;

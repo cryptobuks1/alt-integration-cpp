@@ -22,7 +22,7 @@ struct AltBlockAddon : public PopState<AltEndorsement> {
 
   // TODO: refactor base block tree, and move chainwork to blocktree.hpp, then
   // remove this
-  ArithUint256 chainWork;
+  uint8_t chainWork;
 
   //! list of changes introduced in this block
   // ATV::id_t

@@ -86,7 +86,7 @@ ATV MockMiner::generateATV(const VbkTx& transaction,
 
   for (auto* walkBlock = tip;
        walkBlock && walkBlock->header->getHash() != lastKnownVbkBlockHash;
-       walkBlock = dynamic_cast<vbk_block_index_t*>(walkBlock->pprev)) {
+       walkBlock = walkBlock->pprev) {
     atv.context.push_back(*walkBlock->header);
   }
 
@@ -203,7 +203,7 @@ VbkPopTx MockMiner::endorseVbkBlock(
 
   for (auto* walkBlock = tip;
        walkBlock && walkBlock->getHash() != lastKnownBtcBlockHash;
-       walkBlock = dynamic_cast<btc_block_index_t*>(walkBlock->pprev)) {
+       walkBlock = walkBlock->pprev) {
     popTx.blockOfProofContext.push_back(*walkBlock->header);
   }
   std::reverse(popTx.blockOfProofContext.begin(),

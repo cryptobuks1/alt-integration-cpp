@@ -83,7 +83,7 @@ uint32_t getNextWorkRequired(const BlockIndex<VbkBlock>& prevBlock,
 
   for (const BlockIndex<VbkBlock>* workBlock = &prevBlock;
        i < params.getRetargetPeriod() - 1 && workBlock->pprev != nullptr;
-       ++i, workBlock = dynamic_cast<BlockIndex<VbkBlock>*>(workBlock->pprev)) {
+       ++i, workBlock = workBlock->pprev) {
     int32_t solveTime =
         workBlock->getBlockTime() - workBlock->pprev->getBlockTime();
 
@@ -212,7 +212,7 @@ int64_t calculateMinimumTimestamp(const BlockIndex<VbkBlock>& prev) {
   std::vector<int64_t> pmedian;
   const BlockIndex<VbkBlock>* pindex = &prev;
   for (i = 0; i < HISTORY_FOR_TIMESTAMP_AVERAGE;
-       i++, pindex = dynamic_cast<BlockIndex<VbkBlock>*>(pindex->pprev)) {
+       i++, pindex = pindex->pprev) {
     if (pindex == nullptr) {
       break;
     }

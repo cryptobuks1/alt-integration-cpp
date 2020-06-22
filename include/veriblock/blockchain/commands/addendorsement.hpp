@@ -118,8 +118,7 @@ struct AddEndorsement : public Command {
         "failed to roll back AddEndorsement: the containing block does not "
         "exist");
 
-    auto* endorsed = dynamic_cast<protected_index_t*>(
-        containing->getAncestor(e_->endorsedHeight));
+    auto* endorsed = containing->getAncestor(e_->endorsedHeight);
     VBK_ASSERT(
         endorsed != nullptr &&
         "failed to roll back AddEndorsement: the endorsed block does not "

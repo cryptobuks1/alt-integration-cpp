@@ -137,9 +137,8 @@ std::map<std::vector<uint8_t>, int64_t> AltTree::getPopPayout(
     return {};
   }
 
-  auto* endorsedBlock =
-      dynamic_cast<const index_t*>(index->getAncestorBlocksBehind(
-          alt_config_->getEndorsementSettlementInterval()));
+  auto* endorsedBlock = index->getAncestorBlocksBehind(
+      alt_config_->getEndorsementSettlementInterval());
   if (endorsedBlock == nullptr) {
     state.Error("Not enough blocks to get the endorsed block");
     return {};
@@ -280,7 +279,7 @@ void AltTree::removePayloads(index_t& index, const PopData& popData) {
   if (isOnActiveChain) {
     VBK_ASSERT(index.pprev && "can not remove payloads from genesis block");
     ValidationState dummy;
-    bool ret = setTip(*dynamic_cast<index_t*>(index.pprev), dummy, false);
+    bool ret = setTip(*index.pprev, dummy, false);
     VBK_ASSERT(ret);
   }
 
@@ -385,9 +384,6 @@ void PopStorage::saveBlocks(
   batch->commit();
 }
 
-template <>
-ArithUint256 getBlockProof(const AltBlock&) {
-  return 0;
-}
+uint8_t getBlockProof(const AltBlock&);
 
 }  // namespace altintegration
