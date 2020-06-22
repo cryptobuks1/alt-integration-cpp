@@ -93,7 +93,7 @@ struct AddEndorsement : public Command {
                        HexStr(e_->blockOfProof)));
     }
 
-    auto* duplicate = chain.findBlockContainingEndorsement(*e_, window);
+    auto* duplicate = findBlockContainingEndorsement(chain, *e_, window);
     if (duplicate) {
       // found duplicate
       return state.Invalid(

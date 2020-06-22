@@ -22,9 +22,6 @@ template <>
 struct BlockIndex<BtcBlock> : public BaseBlockIndex<BtcBlock> {
   ~BlockIndex() override = default;
 
-  using endorsement_t = typename BtcBlock::endorsement_t;
-  using eid_t = typename endorsement_t::id_t;
-
   std::string toPrettyString(size_t level = 0) const {
     return fmt::sprintf("%s%sBlockIndex{height=%d, hash=%s, status=%d}",
                         std::string(level, ' '),

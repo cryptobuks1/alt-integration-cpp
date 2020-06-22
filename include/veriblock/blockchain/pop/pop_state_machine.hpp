@@ -34,7 +34,7 @@ struct PopStateMachine {
   bool applyBlock(index_t& index, ValidationState& state) {
     std::vector<CommandPtr> executed;
     auto cgs =
-        storage_.loadCommands<payloads_t, ProtectedTree>(index.payloadIds, ed_);
+        storage_.loadCommands<payloads_t, ProtectedTree>(index, ed_);
     // even if the block is marked as invalid, we still try to apply it
     for (const auto& cg : cgs) {
       VBK_LOG_DEBUG("Applying payload %s from block %s",

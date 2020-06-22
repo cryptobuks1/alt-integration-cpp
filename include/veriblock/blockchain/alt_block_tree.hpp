@@ -7,6 +7,7 @@
 #define ALT_INTEGRATION_INCLUDE_VERIBLOCK_BLOCKCHAIN_ALT_BLOCK_TREE_HPP_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -165,7 +166,7 @@ struct AltTree : public BaseBlockTree<AltBlock> {
 
     auto& payloadIds = index.getPayloadIds<pop_t>();
 
-    std::set<pid_t> existingPids(payloadIds.begin(), payloadIds.end());
+    std::set<typename pop_t::id_t> existingPids(payloadIds.begin(), payloadIds.end());
 
     for (const auto& p : payloads) {
       auto pid = p.getId();
