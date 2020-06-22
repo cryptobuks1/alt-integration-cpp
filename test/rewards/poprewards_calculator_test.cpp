@@ -31,6 +31,12 @@ struct AltChainParamsTest : public AltChainParams {
   uint32_t getSuperMaxPopDataWeight() const noexcept override {
     return 5 * getMaxPopDataWeight();
   }
+
+  std::vector<uint8_t> hashFunction(const std::vector<uint8_t>& bytes) const noexcept override {
+    ReadStream stream(bytes);
+    AltBlock altBlock = AltBlock::fromVbkEncoding(stream);
+    return altBlock.getHash();
+  }
 };
 
 struct RewardsCalculatorTestFixture : ::testing::Test {
