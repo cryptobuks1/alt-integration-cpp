@@ -30,7 +30,7 @@ struct AltBlockAddon : public PopState<AltEndorsement> {
   // VTB::id_t
   std::vector<uint256> vbk_payloadIds;
   // VbkBlock::id_t
-  std::vector<uint192> vbk_blockIds;
+  std::vector<uint96> vbk_blockIds;
 
   bool payloadsIdsEmpty() const {
     return alt_payloadIds.empty() && vbk_payloadIds.empty() &&
@@ -51,7 +51,7 @@ struct AltBlockAddon : public PopState<AltEndorsement> {
   }
 
   template <>
-  std::vector<uint192>& getPayloadIds<VbkBlock, uint192>() {
+  std::vector<uint96>& getPayloadIds<VbkBlock, uint96>() {
     return vbk_blockIds;
   }
 
@@ -69,7 +69,7 @@ struct AltBlockAddon : public PopState<AltEndorsement> {
   }
 
   template <>
-  const std::vector<uint192>& getPayloadIds<VbkBlock, uint192>() const {
+  const std::vector<uint96>& getPayloadIds<VbkBlock, uint96>() const {
     return vbk_blockIds;
   }
 

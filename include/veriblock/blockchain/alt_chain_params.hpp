@@ -140,7 +140,7 @@ struct AltChainParams {
 
   virtual AltBlock getBootstrapBlock() const noexcept = 0;
 
-  virtual std::vector<uint8_t> hashFunction(
+  virtual std::vector<uint8_t> getHash(
       const std::vector<uint8_t>& bytes) const noexcept = 0;
 
   std::vector<uint8_t> toRaw() const;

@@ -159,7 +159,7 @@ void AltTree::payloadsToCommands(const ATV& atv,
   addBlock(vbk(), atv.containingBlock, commands);
 
   std::vector<uint8_t> endorsed_hash =
-      alt_config_->hashFunction(atv.transaction.publicationData.header);
+      alt_config_->getHash(atv.transaction.publicationData.header);
   auto* endorsed_index = getBlockIndex(endorsed_hash);
   VBK_ASSERT(endorsed_index);
 
@@ -291,7 +291,7 @@ void AltTree::removePayloads(index_t& index, const PopData& popData) {
     VBK_ASSERT(ret);
   }
 
-  removePayloads(index, popData.atvs, false);
+  removePayloads(index, popData.context, false);
   removePayloads(index, popData.vtbs, false);
   removePayloads(index, popData.atvs, false);
 }
@@ -379,16 +379,16 @@ std::vector<CommandGroup> PayloadsStorage::loadCommands<AltTree>(
   std::vector<CommandGroup> out{};
   std::vector<CommandGroup> payloads_out;
 
-  payloads_out = loadCommands_<alt_payloads>(
-      index, tree, PayloadsBaseStorage<alt_payloads>::prepo_);
+  payloads_out = loadCommands_<vbk_block_t>(
+      index, tree, PayloadsBaseStorage<vbk_block_t>::prepo_);
   out.insert(out.end(), payloads_out.begin(), payloads_out.end());
 
   payloads_out = loadCommands_<vbk_payloads>(
       index, tree, PayloadsBaseStorage<vbk_payloads>::prepo_);
   out.insert(out.end(), payloads_out.begin(), payloads_out.end());
 
-  payloads_out = loadCommands_<vbk_block_t>(
-      index, tree, PayloadsBaseStorage<vbk_block_t>::prepo_);
+  payloads_out = loadCommands_<alt_payloads>(
+      index, tree, PayloadsBaseStorage<alt_payloads>::prepo_);
   out.insert(out.end(), payloads_out.begin(), payloads_out.end());
 
   return out;
@@ -414,6 +414,6 @@ void PopStorage::saveBlocks(
   batch->commit();
 }
 
-uint8_t getBlockProof(const AltBlock&);
+uint8_t getBlockProof(const AltBlock&) { return 0; }
 
 }  // namespace altintegration

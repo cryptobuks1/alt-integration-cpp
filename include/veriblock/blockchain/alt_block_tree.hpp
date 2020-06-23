@@ -119,7 +119,7 @@ struct AltTree : public BaseBlockTree<AltBlock> {
         continue;
       }
 
-      auto stored_payload = storagePayloads_.loadPayloads<alt_payloads_t>(pid);
+      auto stored_payload = storagePayloads_.loadPayloads<pop_t>(pid);
       if (!stored_payload.valid) {
         revalidateSubtree(index, BLOCK_FAILED_POP, false);
       }
@@ -296,7 +296,7 @@ JsonValue ToJSON(const BlockIndex<AltBlock>& i) {
   return obj;
 }
 
-uint8_t getBlockProof(const AltBlock&) { return 0; }
+uint8_t getBlockProof(const AltBlock&);
 
 }  // namespace altintegration
 
