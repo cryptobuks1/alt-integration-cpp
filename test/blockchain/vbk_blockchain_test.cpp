@@ -5,7 +5,6 @@
 
 #include <gtest/gtest.h>
 
-#include <fstream>
 #include <memory>
 
 #include "block_headers.hpp"
