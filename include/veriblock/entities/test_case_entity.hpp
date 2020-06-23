@@ -20,7 +20,7 @@
 namespace altintegration {
 
 struct TestCase {
-  using alt_block_with_payloads_t = std::pair<AltBlock, std::vector<PopData>>;
+  using alt_block_with_payloads_t = std::pair<AltBlock, PopData>;
 
   std::vector<alt_block_with_payloads_t> alt_tree;
   Config config;
