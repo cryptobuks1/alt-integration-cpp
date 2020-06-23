@@ -39,10 +39,6 @@ struct AltTree : public BaseBlockTree<AltBlock> {
   using index_t = BlockIndex<AltBlock>;
   using endorsement_t = typename index_t::endorsement_t;
   using eid_t = typename endorsement_t::id_t;
-  using alt_payloads_t = typename index_t::payloads_t;
-  using vbk_payloads_t = VTB;
-  using vbk_block_t = VbkBlock;
-  using pid_t = typename alt_payloads_t::id_t;
   using hash_t = typename AltBlock::hash_t;
 
   using PopForkComparator = PopAwareForkResolutionComparator<AltBlock,
@@ -133,11 +129,11 @@ struct AltTree : public BaseBlockTree<AltBlock> {
                    const PopData& popData,
                    ValidationState& state);
 
-  template <typename pop_t,
-            typename = typename std::enable_if<
-                std::is_same<pop_t, alt_payloads_t>::value ||
-                std::is_same<pop_t, vbk_payloads_t>::value ||
-                std::is_same<pop_t, vbk_block_t>::value>::type>
+  template <
+      typename pop_t,
+      typename = typename std::enable_if<
+          std::is_same<pop_t, ATV>::value || std::is_same<pop_t, VTB>::value ||
+          std::is_same<pop_t, VbkBlock>::value>::type>
   bool addPayloads(index_t& index,
                    const std::vector<pop_t>& payloads,
                    ValidationState& state) {

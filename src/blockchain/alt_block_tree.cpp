@@ -338,9 +338,7 @@ std::vector<CommandGroup> loadCommands_(
       throw StateCorruptedException(
           fmt::sprintf("Failed to read payloads id={%s}", pid.toHex()));
     }
-    CommandGroup cg;
-    cg.id = pid;
-    cg.valid = payloads.valid;
+    CommandGroup cg(pid.asVector(), payloads.valid, pop_t::name());
     tree.payloadsToCommands(payloads, cg.commands);
     out.push_back(cg);
   }
@@ -360,9 +358,7 @@ std::vector<CommandGroup> loadCommands_(
       throw StateCorruptedException(
           fmt::sprintf("Failed to read payloads id={%s}", pid.toHex()));
     }
-    CommandGroup cg;
-    cg.id = pid;
-    cg.valid = payloads.valid;
+    CommandGroup cg(pid.asVector(), payloads.valid, ATV::name());
     tree.payloadsToCommands(payloads, *index.header, cg.commands);
     out.push_back(cg);
   }
@@ -372,23 +368,19 @@ std::vector<CommandGroup> loadCommands_(
 template <>
 std::vector<CommandGroup> PayloadsStorage::loadCommands<AltTree>(
     const typename AltTree::index_t& index, AltTree& tree) {
-  using alt_payloads = typename AltTree::alt_payloads_t;
-  using vbk_payloads = typename AltTree::vbk_payloads_t;
-  using vbk_block_t = typename AltTree::vbk_block_t;
-
   std::vector<CommandGroup> out{};
   std::vector<CommandGroup> payloads_out;
 
-  payloads_out = loadCommands_<vbk_block_t>(
-      index, tree, PayloadsBaseStorage<vbk_block_t>::prepo_);
+  payloads_out = loadCommands_<VbkBlock>(
+      index, tree, PayloadsBaseStorage<VbkBlock>::prepo_);
   out.insert(out.end(), payloads_out.begin(), payloads_out.end());
 
-  payloads_out = loadCommands_<vbk_payloads>(
-      index, tree, PayloadsBaseStorage<vbk_payloads>::prepo_);
+  payloads_out =
+      loadCommands_<VTB>(index, tree, PayloadsBaseStorage<VTB>::prepo_);
   out.insert(out.end(), payloads_out.begin(), payloads_out.end());
 
-  payloads_out = loadCommands_<alt_payloads>(
-      index, tree, PayloadsBaseStorage<alt_payloads>::prepo_);
+  payloads_out =
+      loadCommands_<ATV>(index, tree, PayloadsBaseStorage<ATV>::prepo_);
   out.insert(out.end(), payloads_out.begin(), payloads_out.end());
 
   return out;

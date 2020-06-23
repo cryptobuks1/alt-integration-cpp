@@ -307,9 +307,7 @@ std::vector<CommandGroup> PayloadsStorage::loadCommands<VbkBlockTree>(
       throw StateCorruptedException(
           fmt::sprintf("Failed to read payloads id={%s}", pid.toHex()));
     }
-    CommandGroup cg;
-    cg.id = pid;
-    cg.valid = payloads.valid;
+    CommandGroup cg(pid.asVector(), payloads.valid, pop_t::name());
     tree.payloadsToCommands(payloads, cg.commands);
     out.push_back(cg);
   }

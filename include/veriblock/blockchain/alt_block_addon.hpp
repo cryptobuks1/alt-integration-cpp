@@ -13,12 +13,13 @@
 
 namespace altintegration {
 
+struct PopData;
 struct ATV;
 struct VTB;
 struct VbkBlock;
 
 struct AltBlockAddon : public PopState<AltEndorsement> {
-  using payloads_t = ATV;
+  using payloads_t = PopData;
 
   // TODO: refactor base block tree, and move chainwork to blocktree.hpp, then
   // remove this

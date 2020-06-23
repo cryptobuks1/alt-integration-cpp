@@ -17,7 +17,6 @@
 
 namespace altintegration {
 
-struct ATV;
 struct VbkBlock;
 
 struct AltBlock {
