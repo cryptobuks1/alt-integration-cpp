@@ -149,21 +149,39 @@ struct PopTestFixture {
     out.insert(out.end(), ctx.begin(), ctx.end());
   }
 
-  PopData createPopData(int32_t version, ATV& atv, std::vector<VTB> vtbs) {
+  PopData createPopData(int32_t version,
+                        std::vector<ATV> atvs,
+                        std::vector<VTB> vtbs) {
     PopData popData;
     popData.version = version;
+
+    std::set<typename VbkBlock::hash_t> known_blocks;
 
     // fill vbk context
     for (auto& vtb : vtbs) {
       for (const auto& block : vtb.context) {
-        popData.context.push_back(block);
+        if (known_blocks.count(block.getHash()) == 0) {
+          popData.context.push_back(block);
+          known_blocks.insert(block.getHash());
+        }
       }
-      popData.context.push_back(vtb.containingBlock);
+
+      if (known_blocks.count(vtb.containingBlock.getHash()) == 0) {
+        popData.context.push_back(vtb.containingBlock);
+        known_blocks.insert(vtb.containingBlock.getHash());
+      }
+
       vtb.context.clear();
     }
 
-    for (const auto& block : atv.context) {
-      popData.context.push_back(block);
+    for (auto& atv : atvs) {
+      for (const auto& block : atv.context) {
+        if (known_blocks.count(block.getHash()) == 0) {
+          popData.context.push_back(block);
+          known_blocks.insert(block.getHash());
+        }
+      }
+      atv.context.clear();
     }
 
     std::sort(popData.context.begin(),
@@ -172,8 +190,7 @@ struct PopTestFixture {
                 return a.height < b.height;
               });
 
-    atv.context.clear();
-    popData.atvs.push_back(atv);
+    popData.atvs = atvs;
     popData.vtbs = vtbs;
 
     return popData;
