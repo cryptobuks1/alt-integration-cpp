@@ -27,6 +27,30 @@ typedef std::vector<uint8_t> (*Hash_Function)(
 struct MemPool {
   using vbk_hash_t = decltype(VbkBlock::previousBlock);
 
+  struct VbkPayloadsRelations {
+    using id_t = VbkBlock::id_t;
+
+    VbkPayloadsRelations(const VbkBlock& b) : header(b) {}
+
+    VbkBlock header;
+    std::vector<std::shared_ptr<VTB>> vtbs;
+    std::vector<std::shared_ptr<ATV>> atvs;
+
+    PopData toPopData() const {
+      PopData pop;
+      pop.context.push_back(header);
+      for(const auto& vtb: vtbs) {
+        pop.vtbs.push_back(*vtb);
+      }
+
+      for(const auto& atv: atvs) {
+        pop.atvs.push_back(*atv);
+      }
+
+      return pop;
+    }
+  };
+
   template <typename Payload>
   using payload_map =
       std::unordered_map<typename Payload::id_t, std::shared_ptr<Payload>>;
@@ -34,6 +58,7 @@ struct MemPool {
   using vbkblock_map_t = payload_map<VbkBlock>;
   using atv_map_t = payload_map<ATV>;
   using vtb_map_t = payload_map<VTB>;
+  using relations_map_t = payload_map<VbkPayloadsRelations>;
 
   ~MemPool() = default;
   MemPool(const AltChainParams& alt_param,
@@ -81,6 +106,8 @@ struct MemPool {
   void removePayloads(const std::vector<PopData>& v_popData);
 
  private:
+  // relations between VBK block and payloads
+  relations_map_t relations_;
   vbkblock_map_t vbkblocks_;
   atv_map_t stored_atvs_;
   vtb_map_t stored_vtbs_;
@@ -101,6 +128,8 @@ struct MemPool {
                      PopData& popdata,
                      AltTree& tree,
                      ValidationState& state);
+
+  VbkPayloadsRelations& touchVbkBlock(const VbkBlock& block);
 };
 
 template <>

@@ -58,11 +58,8 @@ bool AltTree::addPayloads(index_t& index,
   if (!addPayloads(index, popData.vtbs, state)) {
     return false;
   }
-  if (!addPayloads(index, popData.atvs, state)) {
-    return false;
-  }
 
-  return true;
+  return addPayloads(index, popData.atvs, state);
 }
 
 bool AltTree::validatePayloads(const AltBlock& block,

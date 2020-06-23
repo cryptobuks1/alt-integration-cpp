@@ -23,8 +23,8 @@ struct PopData {
   int32_t version{};
 
   std::vector<VbkBlock> context;
-  std::vector<ATV> atvs{};
   std::vector<VTB> vtbs{};
+  std::vector<ATV> atvs{};
 
   /**
    * Read VBK data from the stream and convert it to PopData

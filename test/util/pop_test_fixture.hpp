@@ -96,6 +96,16 @@ struct PopTestFixture {
     return block;
   }
 
+  PopData mergePopData(const std::vector<PopData>& all) {
+    PopData out;
+    for(auto& p : all) {
+      out.context.insert(out.context.end(), p.context.begin(), p.context.end());
+      out.vtbs.insert(out.vtbs.end(), p.vtbs.begin(), p.vtbs.end());
+      out.atvs.insert(out.atvs.end(), p.atvs.begin(), p.atvs.end());
+    }
+    return out;
+  }
+
   VbkPopTx generatePopTx(const VbkBlock::hash_t& endorsedBlock) {
     auto index = popminer->vbk().getBlockIndex(endorsedBlock);
     if (!index) {

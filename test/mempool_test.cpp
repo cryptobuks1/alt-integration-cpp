@@ -69,7 +69,7 @@ TEST_F(MemPoolFixture, removePayloads_test) {
 
   EXPECT_EQ(v_popData.size(), 1);
   EXPECT_EQ(v_popData[0].vtbs.size(), 2);
-  EXPECT_EQ(v_popData[0].atv, atv);
+  EXPECT_EQ(v_popData[0].atvs.at(0), atv);
 
   // do the same to show that from mempool do not remove payloads
   ASSERT_TRUE(alttree.setState(chain.rbegin()->getHash(), state));
@@ -77,7 +77,7 @@ TEST_F(MemPoolFixture, removePayloads_test) {
 
   EXPECT_EQ(v_popData.size(), 1);
   EXPECT_EQ(v_popData[0].vtbs.size(), 2);
-  EXPECT_EQ(v_popData[0].atv, atv);
+  EXPECT_EQ(v_popData[0].atvs.at(0), atv);
 
   // remove from mempool
   mempool.removePayloads(v_popData);
@@ -141,12 +141,12 @@ TEST_F(MemPoolFixture, getPop_scenario_1) {
 
   auto containingBlock = generateNextBlock(*chain.rbegin());
   chain.push_back(containingBlock);
-  AltPayloads payloads =
-      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock);
+//  auto payloads =
+//      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock);
 
   EXPECT_TRUE(alttree.acceptBlock(containingBlock, state));
   EXPECT_TRUE(
-      alttree.addPayloads(containingBlock.getHash(), {payloads}, state));
+      alttree.addPayloads(containingBlock.getHash(), v_popData[0], state));
   EXPECT_TRUE(alttree.setState(containingBlock.getHash(), state));
   EXPECT_TRUE(state.IsValid());
 }
@@ -210,11 +210,11 @@ TEST_F(MemPoolFixture, getPop_scenario_2) {
 
   auto containingBlock = generateNextBlock(*chain.rbegin());
   chain.push_back(containingBlock);
-  AltPayloads payloads =
-      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock);
+//  AltPayloads payloads =
+//      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock);
 
   EXPECT_TRUE(alttree.acceptBlock(containingBlock, state));
-  EXPECT_TRUE(alttree.addPayloads(containingBlock, {payloads}, state));
+  EXPECT_TRUE(alttree.addPayloads(containingBlock, v_popData.at(0), state));
   EXPECT_TRUE(alttree.setState(containingBlock.getHash(), state));
   EXPECT_TRUE(state.IsValid());
 }
@@ -278,11 +278,11 @@ TEST_F(MemPoolFixture, getPop_scenario_4) {
 
   auto containingBlock = generateNextBlock(*chain.rbegin());
   chain.push_back(containingBlock);
-  AltPayloads payloads =
-      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock);
+//  AltPayloads payloads =
+//      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock);
 
   EXPECT_TRUE(alttree.acceptBlock(containingBlock, state));
-  EXPECT_TRUE(alttree.addPayloads(containingBlock, {payloads}, state));
+  EXPECT_TRUE(alttree.addPayloads(containingBlock, v_popData.at(0), state));
   EXPECT_TRUE(alttree.setState(containingBlock.getHash(), state));
   EXPECT_TRUE(state.IsValid());
 }
@@ -344,23 +344,25 @@ TEST_F(MemPoolFixture, getPop_scenario_5) {
   std::vector<PopData> v_popData = mempool.getPop(alttree);
 
   EXPECT_EQ(v_popData.size(), 2);
-  EXPECT_EQ(v_popData[0].vtbs.size(), 1);
-  EXPECT_EQ(v_popData[0].atv, atv1);
-  EXPECT_EQ(v_popData[0].vtbs[0], vtb1);
-  EXPECT_EQ(v_popData[1].vtbs.size(), 1);
-  EXPECT_EQ(v_popData[1].atv, atv2);
-  EXPECT_EQ(v_popData[1].vtbs[0], vtb2);
+  EXPECT_EQ(v_popData.at(0).vtbs.size(), 1);
+  EXPECT_EQ(v_popData.at(0).atvs.at(0), atv1);
+  EXPECT_EQ(v_popData.at(0).vtbs.at(0), vtb1);
+  EXPECT_EQ(v_popData.at(1).vtbs.size(), 1);
+  EXPECT_EQ(v_popData.at(1).atvs.at(0), atv2);
+  EXPECT_EQ(v_popData.at(1).vtbs.at(0), vtb2);
 
   auto containingBlock = generateNextBlock(*chain.rbegin());
   chain.push_back(containingBlock);
-  AltPayloads payloads1 =
-      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock1);
-  AltPayloads payloads2 =
-      generateAltPayloads(v_popData[1], containingBlock, endorsedBlock2);
+//  auto payloads1 =
+//      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock1);
+//  auto payloads2 =
+//      generateAltPayloads(v_popData[1], containingBlock, endorsedBlock2);
+
+  auto payloads = mergePopData(v_popData);
 
   EXPECT_TRUE(alttree.acceptBlock(containingBlock, state));
   EXPECT_TRUE(
-      alttree.addPayloads(containingBlock, {payloads1, payloads2}, state));
+      alttree.addPayloads(containingBlock, payloads, state));
   EXPECT_TRUE(alttree.setState(containingBlock.getHash(), state));
   EXPECT_TRUE(state.IsValid());
 }
@@ -424,21 +426,21 @@ TEST_F(MemPoolFixture, getPop_scenario_6) {
   EXPECT_EQ(v_popData.size(), 2);
   EXPECT_EQ(v_popData[0].vtbs.size(), 1);
   EXPECT_EQ(v_popData[0].vtbs[0], vtb1);
-  EXPECT_EQ(v_popData[0].atv, atv1);
+  EXPECT_EQ(v_popData[0].atvs.at(0), atv1);
   EXPECT_EQ(v_popData[1].vtbs.size(), 1);
-  EXPECT_EQ(v_popData[1].atv, atv2);
+  EXPECT_EQ(v_popData[1].atvs.at(0), atv2);
   EXPECT_EQ(v_popData[1].vtbs[0], vtb2);
 
   auto containingBlock = generateNextBlock(*chain.rbegin());
   chain.push_back(containingBlock);
-  AltPayloads payloads1 =
-      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock1);
-  AltPayloads payloads2 =
-      generateAltPayloads(v_popData[1], containingBlock, endorsedBlock2);
-
+//  AltPayloads payloads1 =
+//      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock1);
+//  AltPayloads payloads2 =
+//      generateAltPayloads(v_popData[1], containingBlock, endorsedBlock2);
+  auto payloads = mergePopData(v_popData);
   EXPECT_TRUE(alttree.acceptBlock(containingBlock, state));
   EXPECT_TRUE(
-      alttree.addPayloads(containingBlock, {payloads1, payloads2}, state));
+      alttree.addPayloads(containingBlock, payloads, state));
   EXPECT_TRUE(alttree.setState(containingBlock.getHash(), state));
   EXPECT_TRUE(state.IsValid());
 }
@@ -505,11 +507,11 @@ TEST_F(MemPoolFixture, getPop_scenario_7) {
 
   auto containingBlock = generateNextBlock(*chain.rbegin());
   chain.push_back(containingBlock);
-  AltPayloads payloads =
-      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock1);
+//  AltPayloads payloads =
+//      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock1);
 
   EXPECT_TRUE(alttree.acceptBlock(containingBlock, state));
-  EXPECT_TRUE(alttree.addPayloads(containingBlock, {payloads}, state));
+  EXPECT_TRUE(alttree.addPayloads(containingBlock, v_popData.at(0), state));
   EXPECT_TRUE(alttree.setState(containingBlock.getHash(), state));
   EXPECT_TRUE(state.IsValid());
 }
@@ -595,11 +597,11 @@ TEST_F(MemPoolFixture, getPop_scenario_8) {
 
   auto containingBlock = generateNextBlock(*chain.rbegin());
   chain.push_back(containingBlock);
-  AltPayloads payloads =
-      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock1);
+//  AltPayloads payloads =
+//      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock1);
 
   EXPECT_TRUE(alttree.acceptBlock(containingBlock, state));
-  EXPECT_TRUE(alttree.addPayloads(containingBlock, {payloads}, state));
+  EXPECT_TRUE(alttree.addPayloads(containingBlock, v_popData.at(0), state));
   EXPECT_TRUE(alttree.setState(containingBlock.getHash(), state));
   EXPECT_TRUE(state.IsValid());
 }
@@ -632,7 +634,7 @@ TEST_F(MemPoolFixture, getPop_scenario_9) {
   std::vector<PopData> v_popData = mempool.getPop(alttree);
 
   EXPECT_EQ(v_popData.size(), 1);
-  EXPECT_EQ(v_popData[0].atv, atv1);
+  EXPECT_EQ(v_popData[0].atvs.at(0), atv1);
 
   auto containingBlock = generateNextBlock(*chain.rbegin());
   chain.push_back(containingBlock);
@@ -640,7 +642,7 @@ TEST_F(MemPoolFixture, getPop_scenario_9) {
       generateAltPayloads(v_popData[0], containingBlock, endorsedBlock1);
 
   EXPECT_TRUE(alttree.acceptBlock(containingBlock, state));
-  EXPECT_TRUE(alttree.addPayloads(containingBlock, {payloads}, state));
+  EXPECT_TRUE(alttree.addPayloads(containingBlock, v_popData.at(0), state));
   EXPECT_TRUE(alttree.setState(containingBlock.getHash(), state));
   EXPECT_TRUE(state.IsValid());
 
@@ -698,11 +700,11 @@ TEST_F(MemPoolFixture, getPop_scenario_10) {
 
   auto containingBlock = generateNextBlock(*chain.rbegin());
   chain.push_back(containingBlock);
-  AltPayloads payloads1 =
-      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock1);
+//  AltPayloads payloads1 =
+//      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock1);
 
   EXPECT_TRUE(alttree.acceptBlock(containingBlock, state));
-  EXPECT_TRUE(alttree.addPayloads(containingBlock, {payloads1}, state));
+  EXPECT_TRUE(alttree.addPayloads(containingBlock, v_popData.at(0), state));
   EXPECT_TRUE(alttree.setState(containingBlock.getHash(), state));
   EXPECT_TRUE(state.IsValid());
 
@@ -788,15 +790,15 @@ TEST_F(MemPoolFixture, getPop_scenario_11) {
   std::vector<PopData> v_popData = mempool.getPop(alttree);
 
   EXPECT_EQ(v_popData.size(), 1);
-  EXPECT_EQ(v_popData[0].atv, atv1);
+  EXPECT_EQ(v_popData[0].atvs.at(0), atv1);
 
   auto containingBlock = generateNextBlock(*chain.rbegin());
   chain.push_back(containingBlock);
-  AltPayloads payloads1 =
-      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock1);
+//  AltPayloads payloads1 =
+//      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock1);
 
   EXPECT_TRUE(alttree.acceptBlock(containingBlock, state));
-  EXPECT_TRUE(alttree.addPayloads(containingBlock, {payloads1}, state));
+  EXPECT_TRUE(alttree.addPayloads(containingBlock, v_popData.at(0), state));
   EXPECT_TRUE(alttree.setState(containingBlock.getHash(), state));
   EXPECT_TRUE(state.IsValid());
 
@@ -811,15 +813,15 @@ TEST_F(MemPoolFixture, getPop_scenario_11) {
   v_popData = mempool.getPop(alttree);
 
   EXPECT_EQ(v_popData.size(), 1);
-  EXPECT_EQ(v_popData[0].atv, atv2);
+  EXPECT_EQ(v_popData[0].atvs.at(0), atv2);
 
   containingBlock = generateNextBlock(*chain.rbegin());
   chain.push_back(containingBlock);
-  AltPayloads payloads2 =
-      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock1);
+//  AltPayloads payloads2 =
+//      generateAltPayloads(v_popData[0], containingBlock, endorsedBlock1);
 
   EXPECT_TRUE(alttree.acceptBlock(containingBlock, state));
-  EXPECT_TRUE(alttree.addPayloads(containingBlock, {payloads2}, state));
+  EXPECT_TRUE(alttree.addPayloads(containingBlock, v_popData.at(0), state));
   EXPECT_TRUE(alttree.setState(containingBlock.getHash(), state));
   EXPECT_TRUE(state.IsValid());
 }
