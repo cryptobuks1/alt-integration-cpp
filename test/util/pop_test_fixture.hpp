@@ -129,11 +129,18 @@ struct PopTestFixture {
 
     std::vector<VbkBlock> ctx;
 
+    std::set<typename VbkBlock::hash_t> known_blocks;
+    for (const auto& b : out) {
+      known_blocks.insert(b.getHash());
+    }
+
     for (auto* walkBlock = tip;
          walkBlock != nullptr &&
          walkBlock->header->getHash() != lastKnownVbkBlockHash;
          walkBlock = walkBlock->pprev) {
-      ctx.push_back(*walkBlock->header);
+      if (known_blocks.count(walkBlock->header->getHash()) == 0) {
+        ctx.push_back(*walkBlock->header);
+      }
     }
 
     // since we inserted in reverse order, we need to reverse context blocks
