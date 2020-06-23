@@ -3,14 +3,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-#include "veriblock/blockchain/vbk_blockchain_util.hpp"
-
 #include <gtest/gtest.h>
 
 #include <memory>
 
 #include "veriblock/arith_uint256.hpp"
-#include "veriblock/blockchain/base_block_index1.hpp"
+#include "veriblock/blockchain/vbk_blockchain_util.hpp"
 #include "veriblock/blockchain/vbk_chain_params.hpp"
 #include "veriblock/time.hpp"
 
