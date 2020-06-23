@@ -181,6 +181,12 @@ struct PopTestFixture {
           known_blocks.insert(block.getHash());
         }
       }
+
+      if (known_blocks.count(atv.containingBlock.getHash()) == 0) {
+          popData.context.push_back(atv.containingBlock);
+          known_blocks.insert(atv.containingBlock.getHash());
+      }
+
       atv.context.clear();
     }
 
