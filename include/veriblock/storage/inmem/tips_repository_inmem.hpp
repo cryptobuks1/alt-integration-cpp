@@ -7,6 +7,7 @@
 #define ALT_INTEGRATION_INCLUDE_VERIBLOCK_STORAGE_INMEM_TIPS_REPOSITORY_INMEM_HPP_
 
 #include <veriblock/storage/tips_repository.hpp>
+#include "repository_inmem.hpp"
 
 namespace altintegration {
 

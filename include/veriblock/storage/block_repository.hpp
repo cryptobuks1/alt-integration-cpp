@@ -7,57 +7,14 @@
 #define ALT_INTEGRATION_INCLUDE_VERIBLOCK_STORAGE_BLOCK_REPOSITORY_HPP_
 
 #include <memory>
-#include <veriblock/storage/cursor.hpp>
+#include <utility>
+
+#include "base_repository.hpp"
+#include "cursor.hpp"
+#include "serializers.hpp"
+#include "write_batch.hpp"
 
 namespace altintegration {
-
-// forward decl
-template <typename Block>
-struct BlockRepository;
-
-/**
- * @class BlockWriteBatch
- * @brief Efficiently implements bulk write operation for BlockRepository.
- *
- * @invariant BlockWriteBatch is always in valid state.
- * @invariant BlockWriteBatch does not modify on-disk storage after put/remove
- * operations. It does, when \p BlockRepository::commit is executed on this
- * batch.
- */
-template <typename Block>
-struct BlockWriteBatch {
-  //! stored block type
-  using stored_block_t = Block;
-  //! block has type
-  using hash_t = typename Block::hash_t;
-  //! iterator type
-  using cursor_t = Cursor<hash_t, stored_block_t>;
-
-  virtual ~BlockWriteBatch() = default;
-
-  /**
-   * Write a single block. If block with such hash exists, db will overwrite
-   * it.
-   * @param block to be written in a batch
-   */
-  virtual void put(const stored_block_t& block) = 0;
-
-  /**
-   * Remove a single block from storage identified by its hash.
-   * @param hash block hash
-   */
-  virtual void removeByHash(const hash_t& hash) = 0;
-
-  /**
-   * Clear batch from any modifying operations.
-   */
-  virtual void clear() = 0;
-
-  /**
-   * Efficiently commit given batch on-disk. Clears batch from changes.
-   */
-  virtual void commit() = 0;
-};
 
 /**
  * @class BlockRepository
@@ -71,6 +28,8 @@ struct BlockWriteBatch {
  */
 template <typename Block>
 struct BlockRepository {
+  using key_t = BaseRepository::key_t ;
+  using value_t = BaseRepository::value_t ;
   //! stored block type
   using stored_block_t = Block;
   //! block hash type
@@ -79,6 +38,9 @@ struct BlockRepository {
   using height_t = typename Block::height_t;
   //! iterator type
   using cursor_t = Cursor<hash_t, stored_block_t>;
+  using batch_t = WriteBatch<hash_t, stored_block_t>;
+
+  BlockRepository(std::shared_ptr<BaseRepository> repo) : repo_(std::move(repo)) {}
 
   virtual ~BlockRepository() = default;
 
@@ -89,7 +51,15 @@ struct BlockRepository {
    * passed, out argument is ignored.
    * @return true if block found, false otherwise.
    */
-  virtual bool getByHash(const hash_t& hash, stored_block_t* out) const = 0;
+  virtual bool getByHash(const hash_t& hash, stored_block_t* out) const {
+    auto k = db::Serialize(hash);
+    std::string value;
+    bool ret = repo_->get(k, &value);
+    if (out) {
+      *out = db::Deserialize<stored_block_t>(value);
+    }
+    return ret;
+  }
 
   /**
    * Load many blocks from disk in memory by a list of hashes.
@@ -99,7 +69,22 @@ struct BlockRepository {
    * @return number of blocks appended to output vector.
    */
   virtual size_t getManyByHash(Slice<const hash_t> hashes,
-                               std::vector<stored_block_t>* out) const = 0;
+                               std::vector<stored_block_t>* out) const {
+    std::vector<std::string> k;
+    k.reserve(hashes.size());
+    for (auto& h : hashes) {
+      k.push_back(db::Serialize<hash_t>(h));
+    }
+
+    std::vector<std::string> v;
+    size_t ret = repo_->getMany(k, &v);
+    if (out) {
+      for (auto& value : v) {
+        out->push_back(db::Deserialize<stored_block_t>(value));
+      }
+    }
+    return ret;
+  }
 
   /**
    * Write a single block. If block with such hash exists, db will overwrite
@@ -108,25 +93,36 @@ struct BlockRepository {
    * @return true if block already existed in db and we overwrote it. False
    * otherwise.
    */
-  virtual bool put(const stored_block_t& block) = 0;
+  virtual bool put(const stored_block_t& block)  {
+    auto k = db::Serialize<hash_t>(block.getHash());
+    auto v = db::Serialize<stored_block_t>(block);
+    return repo_->put(k, v);
+  }
 
   /**
    * Remove a single block from storage identified by its hash.
    * @param hash block hash
    * @return true if removed, false if no such element found.
    */
-  virtual bool removeByHash(const hash_t& hash) = 0;
+  virtual bool removeByHash(const hash_t& hash)  {
+    auto k = db::Serialize<hash_t>(hash);
+    return repo_->remove(k);
+  }
 
   /**
    * Clear the entire blocks data.
    */
-  virtual void clear() = 0;
+  virtual void clear() {
+    repo_->clear();
+  }
 
   /**
    * Create new WriteBatch, to perform BULK modify operations.
    * @return a pointer to new WriteBatch instance.
    */
-  virtual std::unique_ptr<BlockWriteBatch<stored_block_t>> newBatch() = 0;
+  virtual std::unique_ptr<batch_t> newBatch() {
+    return repo_->newBatch();
+  }
 
   /**
    * Returns iterator, that is used for height iteration over blockchain.
@@ -135,6 +131,9 @@ struct BlockRepository {
   virtual std::shared_ptr<cursor_t> newCursor() = 0;
 
   bool contains(const hash_t& hash) const { return getByHash(hash, nullptr); }
+
+ private:
+  std::shared_ptr<BaseRepository> repo_;
 };
 
 }  // namespace altintegration
