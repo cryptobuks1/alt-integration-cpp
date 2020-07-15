@@ -10,7 +10,7 @@
 #include <veriblock/blockchain/blocktree.hpp>
 #include <veriblock/blockchain/pop/fork_resolution.hpp>
 #include <veriblock/blockchain/pop/pop_state_machine.hpp>
-#include <veriblock/blockchain/vbk_block_addon.hpp>
+#include <veriblock/blockchain/vbk_block_index.hpp>
 #include <veriblock/blockchain/vbk_chain_params.hpp>
 #include <veriblock/entities/btcblock.hpp>
 #include <veriblock/finalizer.hpp>
@@ -22,11 +22,12 @@ namespace altintegration {
 struct VbkBlockTree : public BlockTree<VbkBlock, VbkChainParams> {
   using VbkTree = BlockTree<VbkBlock, VbkChainParams>;
   using BtcTree = BlockTree<BtcBlock, BtcChainParams>;
-  using index_t = VbkTree::index_t;
-  using payloads_t = typename index_t::payloads_t;
+  using base_index_t = VbkTree::index_t;
+  using index_t = VbkBlockIndex;
+  using payloads_t = typename VbkBlockIndex::payloads_t;
   using pid_t = typename payloads_t::id_t;
-  using endorsement_t = typename index_t::endorsement_t;
-  using PopForkComparator = PopAwareForkResolutionComparator<VbkBlock,
+  using endorsement_t = typename VbkBlockIndex::endorsement_t;
+  using PopForkComparator = PopAwareForkResolutionComparator<index_t,
                                                              VbkChainParams,
                                                              BtcTree,
                                                              VbkBlockTree>;
@@ -46,7 +47,7 @@ struct VbkBlockTree : public BlockTree<VbkBlock, VbkChainParams> {
   //! - does validation of endorsements
   //! - recovers tips array
   //! @invariant NOT atomic.
-  bool loadBlock(const index_t& index, ValidationState& state) override;
+  bool loadBlock(const base_index_t& index, ValidationState& state) override;
 
   BtcTree& btc() { return cmp_.getProtectingBlockTree(); }
   const BtcTree& btc() const { return cmp_.getProtectingBlockTree(); }
@@ -104,63 +105,35 @@ struct VbkBlockTree : public BlockTree<VbkBlock, VbkChainParams> {
   std::string toPrettyString(size_t level = 0) const;
 
   using base::setState;
-  bool setState(index_t& to, ValidationState& state) override;
+  bool setState(base_index_t& to, ValidationState& state) override;
 
  private:
-  void determineBestChain(index_t& candidate, ValidationState& state) override;
+  void determineBestChain(base_index_t& candidate,
+                          ValidationState& state) override;
 
   PopForkComparator cmp_;
   PayloadsStorage& storagePayloads_;
+
+  std::shared_ptr<base_index_t> makeBlockIndex() override {
+    return std::make_shared<index_t>();
+  }
+
+  index_t& getVbkBlockIndex(base_index_t& index) {
+    return dynamic_cast<VbkBlockIndex&>(index);
+  }
+
+  index_t* getVbkBlockIndex(const hash_t& hash) {
+    return dynamic_cast<index_t*>(VbkTree::getBlockIndex(hash));
+  }
 };
 
 template <>
-void removePayloadsFromIndex(BlockIndex<VbkBlock>& index,
+void removePayloadsFromIndex(typename VbkBlockTree::index_t& index,
                              const CommandGroup& cg);
 
 template <>
 std::vector<CommandGroup> PayloadsStorage::loadCommands(
     const typename VbkBlockTree::index_t& index, VbkBlockTree& tree);
-
-template <typename JsonValue>
-JsonValue ToJSON(const BlockIndex<VbkBlock>& i) {
-  auto obj = json::makeEmptyObject<JsonValue>();
-  json::putStringKV(obj, "chainWork", i.chainWork.toHex());
-
-  std::vector<uint256> endorsements;
-  for (const auto& e : i.getContainingEndorsements()) {
-    endorsements.push_back(e.first);
-  }
-  json::putArrayKV(obj, "containingEndorsements", endorsements);
-
-  std::vector<uint256> endorsedBy;
-  for (const auto* e : i.endorsedBy) {
-    endorsedBy.push_back(e->id);
-  }
-  json::putArrayKV(obj, "endorsedBy", endorsedBy);
-  json::putIntKV(obj, "height", i.getHeight());
-  json::putKV(obj, "header", ToJSON<JsonValue>(i.getHeader()));
-  json::putIntKV(obj, "status", i.getStatus());
-  json::putIntKV(obj, "ref", i.getRefCounter());
-
-  auto stored = json::makeEmptyObject<JsonValue>();
-  json::putArrayKV(stored, "vtbids", i.getPayloadIds<VTB, typename VTB::id_t>());
-
-  json::putKV(obj, "stored", stored);
-
-  return obj;
-}
-
-template <typename JsonValue>
-JsonValue ToJSON(const BlockIndex<BtcBlock>& i) {
-  auto obj = json::makeEmptyObject<JsonValue>();
-  json::putStringKV(obj, "chainWork", i.chainWork.toHex());
-  json::putIntKV(obj, "height", i.getHeight());
-  json::putKV(obj, "header", ToJSON<JsonValue>(i.getHeader()));
-  json::putIntKV(obj, "status", i.getStatus());
-  json::putIntKV(obj, "ref", i.getRefCounter());
-
-  return obj;
-}
 
 // HACK: getBlockIndex accepts either hash_t or prev_block_hash_t
 // then, depending on what it received, it should do trim LE on full hash to

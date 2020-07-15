@@ -14,7 +14,7 @@
 
 namespace altintegration {
 
-void VbkBlockTree::determineBestChain(index_t& candidate,
+void VbkBlockTree::determineBestChain(base_index_t& candidate,
                                       ValidationState& state) {
   auto bestTip = getBestChain().tip();
   VBK_ASSERT(bestTip != nullptr && "must be bootstrapped");
@@ -28,7 +28,8 @@ void VbkBlockTree::determineBestChain(index_t& candidate,
     return;
   }
 
-  int result = cmp_.comparePopScore(*this, candidate, state);
+  auto& vbkCandidate = getVbkBlockIndex(candidate);
+  int result = cmp_.comparePopScore(*this, vbkCandidate, state);
   // pop state is already at "best chain"
   if (result == 0) {
     VBK_LOG_DEBUG("Pop scores are equal");
@@ -44,7 +45,7 @@ void VbkBlockTree::determineBestChain(index_t& candidate,
   }
 }
 
-bool VbkBlockTree::setState(index_t& to, ValidationState& state) {
+bool VbkBlockTree::setState(base_index_t& to, ValidationState& state) {
   bool success = cmp_.setState(*this, to, state);
   if (success) {
     overrideTip(to);
@@ -62,7 +63,7 @@ void VbkBlockTree::removePayloads(const block_t& block,
 
 void VbkBlockTree::removePayloads(const Blob<24>& hash,
                                   const std::vector<pid_t>& pids) {
-  auto index = VbkTree::getBlockIndex(hash);
+  auto index = getVbkBlockIndex(hash);
   if (!index) {
     throw std::logic_error("removePayloads is called on unknown VBK block: " +
                            hash.toHex());
@@ -116,7 +117,7 @@ void VbkBlockTree::unsafelyRemovePayload(const block_t& block,
 
 void VbkBlockTree::unsafelyRemovePayload(const Blob<24>& hash,
                                          const pid_t& pid) {
-  auto index = VbkTree::getBlockIndex(hash);
+  auto index = getVbkBlockIndex(hash);
   VBK_ASSERT(index != nullptr &&
              "state corruption: the containing block is not found");
 
@@ -183,7 +184,7 @@ bool VbkBlockTree::addPayloads(const VbkBlock::hash_t& hash,
     return true;
   }
 
-  auto* index = VbkTree::getBlockIndex(hash);
+  auto* index = getVbkBlockIndex(hash);
   if (!index) {
     return state.Invalid(block_t::name() + "-bad-containing",
                          "Can not find VTB containing block: " + hash.toHex());
@@ -292,19 +293,19 @@ std::string VbkBlockTree::toPrettyString(size_t level) const {
       "%s\n%s", VbkTree::toPrettyString(level), cmp_.toPrettyString(level + 2));
 }
 
-bool VbkBlockTree::loadBlock(const VbkBlockTree::index_t& index,
+bool VbkBlockTree::loadBlock(const VbkBlockTree::base_index_t& index,
                              ValidationState& state) {
   if (!VbkTree::loadBlock(index, state)) {
     return false;  // already set
   }
 
-  auto* current = getBlockIndex(index.getHash());
+  auto* current = getVbkBlockIndex(index.getHash());
   VBK_ASSERT(current);
 
   // recover `endorsedBy`
   auto window = std::max(
       0, index.getHeight() - param_->getEndorsementSettlementInterval());
-  Chain<index_t> chain(window, current);
+  Chain<base_index_t> chain(window, current);
   if (!recoverEndorsedBy(*this, chain, *current, state)) {
     return state.Invalid("load-block");
   }
@@ -319,7 +320,7 @@ std::vector<CommandGroup> PayloadsStorage::loadCommands(
 }
 
 template <>
-void removePayloadsFromIndex(BlockIndex<VbkBlock>& index,
+void removePayloadsFromIndex(typename VbkBlockTree::index_t& index,
                              const CommandGroup& cg) {
   VBK_ASSERT(cg.payload_type_name == VTB::name());
   auto& payloads = index.template getPayloadIds<VTB, typename VTB::id_t>();

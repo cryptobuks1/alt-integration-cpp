@@ -3,23 +3,28 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef VERIBLOCK_POP_CPP_ALT_BLOCK_ADDON_HPP
-#define VERIBLOCK_POP_CPP_ALT_BLOCK_ADDON_HPP
+#ifndef VERIBLOCK_POP_CPP_ALT_BLOCK_INDEX_HPP
+#define VERIBLOCK_POP_CPP_ALT_BLOCK_INDEX_HPP
 
 #include <veriblock/arith_uint256.hpp>
 #include <veriblock/blockchain/pop/pop_state.hpp>
 #include <veriblock/entities/endorsements.hpp>
+#include <veriblock/entities/vbkblock.hpp>
+#include <veriblock/entities/altblock.hpp>
 #include <veriblock/uint.hpp>
+#include <veriblock/blockchain/block_index.hpp>
 
 namespace altintegration {
 
 struct PopData;
 struct ATV;
 struct VTB;
-struct VbkBlock;
 
-struct AltBlockAddon : public PopState<AltEndorsement> {
+struct AltBlockIndex : public BlockIndex<AltBlock>, public PopState<AltEndorsement> {
+  using index_t = BlockIndex<AltBlock>;
+  using block_t = AltBlock;
   using payloads_t = PopData;
+  using endorsement_t = AltEndorsement;
 
   // TODO: refactor base block tree, and move chainwork to blocktree.hpp, then
   // remove this
@@ -29,11 +34,16 @@ struct AltBlockAddon : public PopState<AltEndorsement> {
     return _atvids.empty() && _vtbids.empty() && _vbkblockids.empty();
   }
 
-  bool operator==(const AltBlockAddon& o) const {
-    return _atvids == o._atvids && _vtbids == o._vtbids &&
-           _vbkblockids == o._vbkblockids &&
-           PopState<AltEndorsement>::operator==(o);
+  bool operator==(const AltBlockIndex& o) const {
+    bool a = _atvids == o._atvids;
+    bool b = _vtbids == o._vtbids;
+    bool c = _vbkblockids == o._vbkblockids;
+    bool d = PopState<AltEndorsement>::operator==(o);
+    bool e = index_t::operator==(o);
+    return a && b && c && d && e;
   }
+
+  bool operator!=(const AltBlockIndex& o) const { return !operator==(o); }
 
   template <typename pop_t, typename pop_id_t>
   const std::vector<pop_id_t>& getPayloadIds() const;
@@ -52,18 +62,45 @@ struct AltBlockAddon : public PopState<AltEndorsement> {
     payloads.push_back(pid);
   }
 
-  std::string toPrettyString() const {
+  std::string toPrettyStringAddon() const override {
     return fmt::sprintf("ATV=%d, VTB=%d, VBK=%d",
                         _atvids.size(),
                         _vtbids.size(),
                         _vbkblockids.size());
   }
 
-  void toRaw(WriteStream& w) const {
+  void toRawAddon(WriteStream& w) const override {
     PopState<AltEndorsement>::toRaw(w);
     writeArrayOf<uint256>(w, _atvids, writeSingleByteLenValue);
     writeArrayOf<uint256>(w, _vtbids, writeSingleByteLenValue);
     writeArrayOf<uint96>(w, _vbkblockids, writeSingleByteLenValue);
+  }
+
+  template <typename JsonValue>
+  JsonValue ToJSON() {
+    auto obj = json::makeEmptyObject<JsonValue>();
+    std::vector<uint256> endorsements;
+    for (const auto& e : getContainingEndorsements()) {
+      endorsements.push_back(e.first);
+    }
+    json::putArrayKV(obj, "containingEndorsements", endorsements);
+
+    std::vector<uint256> endorsedByStored;
+    for (const auto* e : endorsedBy) {
+      endorsedByStored.push_back(e->id);
+    }
+    json::putArrayKV(obj, "endorsedBy", endorsedBy);
+    json::putIntKV(obj, "status", getStatus());
+
+    auto stored = json::makeEmptyObject<JsonValue>();
+    json::putArrayKV(stored,
+                     "vbkblocks", _vbkblockids);
+    json::putArrayKV(stored, "vtbs", _vtbids);
+    json::putArrayKV(stored, "atvs", _atvids);
+
+    json::putKV(obj, "stored", stored);
+
+    return obj;
   }
 
  protected:
@@ -83,7 +120,7 @@ struct AltBlockAddon : public PopState<AltEndorsement> {
     _vbkblockids.clear();
   }
 
-  void initAddonFromRaw(ReadStream& r) {
+  void initAddonFromRaw(ReadStream& r) override {
     PopState<AltEndorsement>::initAddonFromRaw(r);
     _atvids = readArrayOf<uint256>(
         r, [](ReadStream& s) -> uint256 { return readSingleByteLenValue(s); });
@@ -98,39 +135,39 @@ struct AltBlockAddon : public PopState<AltEndorsement> {
 };
 
 template <>
-inline std::vector<uint256>& AltBlockAddon::getPayloadIdsInner<ATV, uint256>() {
+inline std::vector<uint256>& AltBlockIndex::getPayloadIdsInner<ATV, uint256>() {
   return _atvids;
 }
 
 template <>
-inline std::vector<uint256>& AltBlockAddon::getPayloadIdsInner<VTB, uint256>() {
+inline std::vector<uint256>& AltBlockIndex::getPayloadIdsInner<VTB, uint256>() {
   return _vtbids;
 }
 
 template <>
 inline std::vector<uint96>&
-AltBlockAddon::getPayloadIdsInner<VbkBlock, uint96>() {
+AltBlockIndex::getPayloadIdsInner<VbkBlock, uint96>() {
   return _vbkblockids;
 }
 
 template <>
-inline const std::vector<uint256>& AltBlockAddon::getPayloadIds<ATV, uint256>()
+inline const std::vector<uint256>& AltBlockIndex::getPayloadIds<ATV, uint256>()
     const {
   return _atvids;
 }
 
 template <>
-inline const std::vector<uint256>& AltBlockAddon::getPayloadIds<VTB, uint256>()
+inline const std::vector<uint256>& AltBlockIndex::getPayloadIds<VTB, uint256>()
     const {
   return _vtbids;
 }
 
 template <>
 inline const std::vector<uint96>&
-AltBlockAddon::getPayloadIds<VbkBlock, uint96>() const {
+AltBlockIndex::getPayloadIds<VbkBlock, uint96>() const {
   return _vbkblockids;
 }
 
 }  // namespace altintegration
 
-#endif  // VERIBLOCK_POP_CPP_ALT_BLOCK_ADDON_HPP
+#endif  // VERIBLOCK_POP_CPP_ALT_BLOCK_INDEX_HPP

@@ -31,7 +31,7 @@ bool AltTree::bootstrap(ValidationState& state) {
 
   index->setFlagSetDirty(BLOCK_APPLIED);
   index->setFlagSetDirty(BLOCK_BOOTSTRAP);
-  base::activeChain_ = Chain<index_t>(height, index);
+  base::activeChain_ = Chain<base_index_t>(height, index);
 
   VBK_ASSERT(base::isBootstrapped());
 
@@ -80,6 +80,12 @@ void commitPayloadsIds(Index& index, const std::vector<Pop>& pop) {
   }
 }
 
+bool AltTree::addPayloads(const AltBlock& containing,
+                          const PopData& popData,
+                          ValidationState& state) {
+  return addPayloads(containing.getHash(), popData, state);
+}
+
 bool AltTree::addPayloads(const AltBlock::hash_t& containing,
                           const PopData& popData,
                           ValidationState& state) {
@@ -91,7 +97,14 @@ bool AltTree::addPayloads(const AltBlock::hash_t& containing,
   return addPayloads(*index, popData, state);
 }
 
-bool AltTree::addPayloads(index_t& index,
+bool AltTree::addPayloads(base_index_t& index,
+                          const PopData& popData,
+                          ValidationState& state) {
+  auto copy = popData;
+  return addPayloads(index, copy, state, false);
+}
+
+bool AltTree::addPayloads(base_index_t& index,
                           PopData& payloads,
                           ValidationState& state,
                           bool continueOnInvalid) {
@@ -263,7 +276,7 @@ std::string AltTree::toPrettyString(size_t level) const {
                       pad);
 }
 
-void AltTree::determineBestChain(index_t& candidate, ValidationState&) {
+void AltTree::determineBestChain(base_index_t& candidate, ValidationState&) {
   auto bestTip = getBestChain().tip();
   VBK_ASSERT(bestTip && "must be bootstrapped");
 
@@ -349,7 +362,7 @@ void handleRemovePayloads(Tree& tree,
   }
 }
 
-void AltTree::removePayloads(index_t& index, const PopData& payloads) {
+void AltTree::removePayloads(base_index_t& index, const PopData& payloads) {
   VBK_LOG_INFO("%s remove VBK=%d VTB=%d ATV=%d payloads from %s",
                block_t::name(),
                payloads.context.size(),
@@ -430,14 +443,7 @@ void AltTree::filterInvalidPayloads(PopData& pop) {
   removeSubtree(*tmpindex);
 }
 
-bool AltTree::addPayloads(AltTree::index_t& index,
-                          const PopData& popData,
-                          ValidationState& state) {
-  auto copy = popData;
-  return addPayloads(index, copy, state, false);
-}
-
-bool AltTree::setState(index_t& to, ValidationState& state) {
+bool AltTree::setState(base_index_t& to, ValidationState& state) {
   bool success = cmp_.setState(*this, to, state);
   if (success) {
     overrideTip(to);
@@ -448,7 +454,7 @@ bool AltTree::setState(index_t& to, ValidationState& state) {
   return success;
 }
 
-void AltTree::overrideTip(index_t& to) {
+void AltTree::overrideTip(base_index_t& to) {
   VBK_LOG_INFO("ALT=\"%s\", VBK=\"%s\", BTC=\"%s\"",
                to.toShortPrettyString(),
                (vbk().getBestChain().tip()
@@ -461,7 +467,7 @@ void AltTree::overrideTip(index_t& to) {
   tryAddTip(&to);
 }
 
-bool AltTree::setTipContinueOnInvalid(AltTree::index_t& to,
+bool AltTree::setTipContinueOnInvalid(base_index_t& to,
                                       ValidationState& state) {
   bool success = cmp_.setState(*this, to, state, /*continueOnInvalid=*/true);
   VBK_ASSERT(success);
@@ -472,7 +478,7 @@ bool AltTree::setTipContinueOnInvalid(AltTree::index_t& to,
   return success;
 }
 
-bool AltTree::loadBlock(const AltTree::index_t& index, ValidationState& state) {
+bool AltTree::loadBlock(const base_index_t& index, ValidationState& state) {
   if (!base::loadBlock(index, state)) {
     return false;  // already set
   }
@@ -484,18 +490,12 @@ bool AltTree::loadBlock(const AltTree::index_t& index, ValidationState& state) {
   // recover `endorsedBy`
   auto window = std::max(
       0, index.getHeight() - getParams().getEndorsementSettlementInterval());
-  Chain<index_t> chain(window, current);
+  Chain<base_index_t> chain(window, current);
   if (!recoverEndorsedBy(*this, chain, *current, state)) {
     return state.Invalid("load-block");
   }
 
   return true;
-}
-
-bool AltTree::addPayloads(const AltBlock& containing,
-                          const PopData& popData,
-                          ValidationState& state) {
-  return addPayloads(containing.getHash(), popData, state);
 }
 
 AltTree::AltTree(const AltTree::alt_config_t& alt_config,

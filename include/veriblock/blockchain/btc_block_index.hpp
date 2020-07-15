@@ -9,10 +9,15 @@
 #include <veriblock/arith_uint256.hpp>
 #include <veriblock/logger.hpp>
 #include <veriblock/serde.hpp>
+#include <veriblock/blockchain/block_index.hpp>
+#include <veriblock/entities/btcblock.hpp>
 
 namespace altintegration {
 
-struct BtcBlockAddon {
+struct BtcBlockIndex : public BlockIndex<BtcBlock> {
+  using index_t = BlockIndex<BtcBlock>;
+  using block_t = BtcBlock;
+
   //! (memory only) total amount of work in the chain up to and including this
   //! block
   ArithUint256 chainWork = 0;
@@ -21,17 +26,34 @@ struct BtcBlockAddon {
   void incRefCounter() { _refCounter++; }
   void decRefCounter() { _refCounter--; }
 
-  bool operator==(const BtcBlockAddon& o) const {
+  bool operator==(const BtcBlockIndex& o) const {
     bool a = _refCounter == o._refCounter;
     bool b = chainWork == o.chainWork;
-    return a && b;
+    bool c = index_t::operator==(o);
+    return a && b && c;
   }
 
-  std::string toPrettyString() const {
+  bool operator!=(const BtcBlockIndex& o) const { return !operator==(o); }
+
+  std::string toPrettyStringAddon() const override {
     return fmt::format("chainwork={}", chainWork.toHex());
   }
 
-  void toRaw(WriteStream& w) const { w.writeBE<uint32_t>(_refCounter); }
+  void toRawAddon(WriteStream& w) const override {
+    w.writeBE<uint32_t>(_refCounter);
+  }
+
+  template <typename JsonValue>
+  JsonValue ToJSON() {
+    auto obj = json::makeEmptyObject<JsonValue>();
+    json::putStringKV(obj, "chainWork", chainWork.toHex());
+    json::putIntKV(obj, "height", getHeight());
+    json::putKV(obj, "header", ToJSON<JsonValue>(getHeader()));
+    json::putIntKV(obj, "status", getStatus());
+    json::putIntKV(obj, "ref", getRefCounter());
+
+    return obj;
+  }
 
  protected:
   //! reference counter for fork resolution
@@ -42,8 +64,7 @@ struct BtcBlockAddon {
     chainWork = 0;
   }
 
-  // not static, on purpose
-  void initAddonFromRaw(ReadStream& r) { _refCounter = r.readBE<uint32_t>(); }
+  void initAddonFromRaw(ReadStream& r) override { _refCounter = r.readBE<uint32_t>(); }
 };
 
 }  // namespace altintegration

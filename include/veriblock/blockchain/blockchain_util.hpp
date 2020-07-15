@@ -37,12 +37,12 @@ bool contextuallyCheckBlock(const BlockIndex<Block>& prev,
                             ValidationState& state,
                             const ChainParams& params);
 
-template <typename Block>
-void removePayloadsFromIndex(BlockIndex<Block>& index, const CommandGroup& cg);
+template <typename BlockIndex>
+void removePayloadsFromIndex(BlockIndex& index, const CommandGroup& cg);
 
 template <typename ProtectedBlockTree>
 bool recoverEndorsedBy(ProtectedBlockTree& ed_,
-                       Chain<typename ProtectedBlockTree::index_t>& chain,
+                       Chain<typename ProtectedBlockTree::base_index_t>& chain,
                        typename ProtectedBlockTree::index_t& toRecover,
                        ValidationState& state) {
   std::vector<std::function<void()>> actions;

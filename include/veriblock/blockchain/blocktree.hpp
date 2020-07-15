@@ -265,6 +265,23 @@ struct BlockTree : public BaseBlockTree<Block> {
       this->setState(candidate, state);
     }
   }
+
+  template <typename Block>
+  std::shared_ptr<index_t> makeBlockIndexGeneric();
+
+  template <>
+  inline std::shared_ptr<index_t> makeBlockIndexGeneric<BtcBlock>() {
+    return std::make_shared<BtcBlockIndex>();
+  }
+
+  template <>
+  inline std::shared_ptr<index_t> makeBlockIndexGeneric<VbkBlock>() {
+    return std::make_shared<VbkBlockIndex>();
+  }
+
+  std::shared_ptr<index_t> makeBlockIndex() override {
+    return makeBlockIndexGeneric<block_t>();
+  }
 };
 
 }  // namespace altintegration

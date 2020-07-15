@@ -13,7 +13,6 @@
 #include <vector>
 
 #include "veriblock/arith_uint256.hpp"
-#include "veriblock/blockchain/btc_block_addon.hpp"
 #include "veriblock/fmt.hpp"
 #include "veriblock/hashutil.hpp"
 #include "veriblock/serde.hpp"
@@ -21,15 +20,12 @@
 
 namespace altintegration {
 
-struct BtcBlockAddon;
-
 struct BtcBlock {
   using hash_t = uint256;
   using prev_hash_t = uint256;
   using height_t = int32_t;
   using nonce_t = uint32_t;
   using merkle_t = uint256;
-  using addon_t = BtcBlockAddon;
 
   BtcBlock() = default;
 

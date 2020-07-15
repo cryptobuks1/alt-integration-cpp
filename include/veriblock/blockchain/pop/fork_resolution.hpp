@@ -350,18 +350,17 @@ int comparePopScoreImpl(const std::vector<KeystoneContext>& chainA,
 
 }  // namespace internal
 
-template <typename ProtectedBlock,
+template <typename ProtectedBlockIndex,
           typename ProtectedParams,
           typename ProtectingBlockTree,
           typename ProtectedBlockTree>
 struct PopAwareForkResolutionComparator {
-  using protected_block_t = ProtectedBlock;
-  using protected_block_hash_t = typename ProtectedBlock::hash_t;
+  using protected_block_t = typename ProtectedBlockIndex::block_t;
+  using protected_block_hash_t = typename protected_block_t::hash_t;
   using protected_params_t = ProtectedParams;
   using protecting_params_t = typename ProtectingBlockTree::params_t;
-  using protected_index_t = BlockIndex<protected_block_t>;
-  using protecting_index_t = typename ProtectingBlockTree::index_t;
-  using protecting_block_t = typename protecting_index_t::block_t;
+  using protected_index_t = ProtectedBlockIndex;
+  using protecting_block_t = typename ProtectingBlockTree::index_t::block_t;
   using endorsement_t = typename protected_index_t::endorsement_t;
   using protected_payloads_t = typename protected_index_t::payloads_t;
   using sm_t = PopStateMachine<ProtectingBlockTree,

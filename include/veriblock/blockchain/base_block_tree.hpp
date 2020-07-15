@@ -343,7 +343,7 @@ struct BaseBlockTree {
       newIndex = itr->second;
       removed_.erase(itr);
     } else {
-      newIndex = std::make_shared<index_t>();
+      newIndex = makeBlockIndex();
     }
 
     newIndex->setNull();
@@ -595,6 +595,8 @@ struct BaseBlockTree {
   Chain<index_t> activeChain_;
   //! signals to the end user that block have been invalidated
   signals::Signal<on_invalidate_t> validity_sig_;
+
+  virtual std::shared_ptr<index_t> makeBlockIndex() = 0;
 };
 
 }  // namespace altintegration

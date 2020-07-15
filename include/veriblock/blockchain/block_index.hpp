@@ -11,13 +11,13 @@
 #include <unordered_map>
 #include <vector>
 
-#include "veriblock/arith_uint256.hpp"
-#include "veriblock/blockchain/command.hpp"
-#include "veriblock/blockchain/command_group.hpp"
-#include "veriblock/entities/endorsements.hpp"
-#include "veriblock/logger.hpp"
-#include "veriblock/validation_state.hpp"
-#include "veriblock/write_stream.hpp"
+#include <veriblock/arith_uint256.hpp>
+#include <veriblock/blockchain/command.hpp>
+#include <veriblock/blockchain/command_group.hpp>
+#include <veriblock/entities/endorsements.hpp>
+#include <veriblock/logger.hpp>
+#include <veriblock/validation_state.hpp>
+#include <veriblock/write_stream.hpp>
 
 namespace altintegration {
 
@@ -47,12 +47,13 @@ enum BlockStatus : uint8_t {
 
 //! Store block
 template <typename Block>
-struct BlockIndex : public Block::addon_t {
+struct BlockIndex {
   using block_t = Block;
-  using addon_t = typename Block::addon_t;
   using hash_t = typename block_t::hash_t;
   using prev_hash_t = typename block_t::prev_hash_t;
   using height_t = typename block_t::height_t;
+
+  virtual ~BlockIndex() = default;
 
   //! (memory only) pointer to a previous block
   BlockIndex* pprev = nullptr;
@@ -70,7 +71,6 @@ struct BlockIndex : public Block::addon_t {
   }
 
   void setNull() {
-    addon_t::setNull();
     this->pprev = nullptr;
     this->pnext.clear();
     this->height = 0;
@@ -150,7 +150,7 @@ struct BlockIndex : public Block::addon_t {
     // TODO: this algorithm is not optimal. for O(n) seek backwards until we hit
     // valid height. also it assumes whole blockchain is in memory (pprev is
     // valid until given height)
-    BlockIndex* index = const_cast<BlockIndex*>(this);
+    BlockIndex* index = this;
     while (index != nullptr) {
       if (index->height > _height) {
         index = index->pprev;
@@ -164,56 +164,64 @@ struct BlockIndex : public Block::addon_t {
     return nullptr;
   }
 
-  std::string toPrettyString(size_t level = 0) const {
-    return fmt::sprintf("%s%sBlockIndex{height=%d, hash=%s, status=%d, %s}",
-                        std::string(level, ' '),
-                        Block::name(),
-                        height,
-                        HexStr(getHash()),
-                        status,
-                        addon_t::toPrettyString());
-  }
-
   std::string toShortPrettyString() const {
     return fmt::sprintf("%s:%d:%s", Block::name(), height, HexStr(getHash()));
   }
 
-  void toRaw(WriteStream& stream) const {
+  virtual std::string toPrettyStringAddon() const {
+    return "";
+  }
+
+  virtual std::string toPrettyString(size_t level = 0) const {
+    return fmt::sprintf("%s%sBlockIndex{height=%d, hash=%s, status=%d, %s}",
+                        std::string(level, ' '),
+                        block_t::name(),
+                        height,
+                        HexStr(getHash()),
+                        status,
+                        toPrettyStringAddon());
+  }
+
+  virtual void toRawAddon(WriteStream&) const { }
+
+  virtual void toRaw(WriteStream& stream) const {
     stream.writeBE<uint32_t>(height);
     stream.writeBE<uint8_t>(status);
     header->toRaw(stream);
-    addon_t::toRaw(stream);
+    toRawAddon(stream);
   }
 
-  void initFromRaw(ReadStream& stream) {
-    height = stream.readBE<uint32_t>();
-    status = stream.readBE<uint8_t>();
-    header = std::make_shared<Block>(Block::fromRaw(stream));
-    addon_t::initAddonFromRaw(stream);
-  }
-
-  std::vector<uint8_t> toRaw() const {
+  virtual std::vector<uint8_t> toRaw() const {
     WriteStream stream;
     toRaw(stream);
     return stream.data();
   }
 
-  static BlockIndex fromRaw(ReadStream& stream) {
-    BlockIndex index{};
+  // not static, on purpose
+  virtual void initAddonFromRaw(ReadStream&) { }
+
+  virtual void initFromRaw(ReadStream& stream) {
+    height = stream.readBE<uint32_t>();
+    status = stream.readBE<uint8_t>();
+    header = std::make_shared<Block>(Block::fromRaw(stream));
+    initAddonFromRaw(stream);
+  }
+
+  /*static BtcBlockIndex fromRaw(ReadStream& stream) {
+    BtcBlockIndex index{};
     index.initFromRaw(stream);
     return index;
   }
 
-  static BlockIndex fromRaw(Slice<const uint8_t> bytes) {
+  static BtcBlockIndex fromRaw(Slice<const uint8_t> bytes) {
     ReadStream stream(bytes);
     return fromRaw(stream);
-  }
+  }*/
 
   bool operator==(const BlockIndex& o) const {
     bool a = *header == *o.header;
     bool b = status == o.status;
-    bool c = addon_t::operator==(o);
-    return a && b && c;
+    return a && b;
   }
 
   bool operator!=(const BlockIndex& b) const { return !operator==(b); }
@@ -240,9 +248,9 @@ void PrintTo(const BlockIndex<Block>& b, ::std::ostream* os) {
 template <typename JsonValue, typename Block>
 JsonValue ToJSON(const BlockIndex<Block>& i) {
   auto obj = json::makeEmptyObject<JsonValue>();
-  json::putIntKV(obj, "height", i.height);
-  json::putKV(obj, "header", ToJSON<JsonValue>(*i.header));
-  json::putIntKV(obj, "status", i.status);
+  json::putIntKV(obj, "height", i.getHeight());
+  json::putKV(obj, "header", ToJSON<JsonValue>(i.getHeader()));
+  json::putIntKV(obj, "status", i.getStatus());
   return obj;
 }
 

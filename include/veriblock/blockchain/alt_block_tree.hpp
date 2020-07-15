@@ -11,21 +11,22 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include <veriblock/storage/payloads_storage.hpp>
 #include <veriblock/storage/pop_storage.hpp>
-
-#include "veriblock/blockchain/alt_chain_params.hpp"
-#include "veriblock/blockchain/base_block_tree.hpp"
-#include "veriblock/blockchain/chain.hpp"
-#include "veriblock/blockchain/pop/fork_resolution.hpp"
-#include "veriblock/blockchain/pop/vbk_block_tree.hpp"
-#include "veriblock/entities/altblock.hpp"
-#include "veriblock/entities/btcblock.hpp"
-#include "veriblock/entities/popdata.hpp"
-#include "veriblock/entities/vbkblock.hpp"
-#include "veriblock/fmt.hpp"
-#include "veriblock/rewards/poprewards.hpp"
-#include "veriblock/validation_state.hpp"
+#include <veriblock/blockchain/alt_chain_params.hpp>
+#include <veriblock/blockchain/base_block_tree.hpp>
+#include <veriblock/blockchain/chain.hpp>
+#include <veriblock/blockchain/pop/fork_resolution.hpp>
+#include <veriblock/blockchain/pop/vbk_block_tree.hpp>
+#include <veriblock/blockchain/alt_block_index.hpp>
+#include <veriblock/entities/altblock.hpp>
+#include <veriblock/entities/btcblock.hpp>
+#include <veriblock/entities/popdata.hpp>
+#include <veriblock/entities/vbkblock.hpp>
+#include <veriblock/fmt.hpp>
+#include <veriblock/rewards/poprewards.hpp>
+#include <veriblock/validation_state.hpp>
 
 namespace altintegration {
 
@@ -38,12 +39,14 @@ struct AltTree : public BaseBlockTree<AltBlock> {
   using alt_config_t = AltChainParams;
   using vbk_config_t = VbkChainParams;
   using btc_config_t = BtcChainParams;
-  using index_t = BlockIndex<AltBlock>;
+  using base_index_t = BlockIndex<AltBlock>;
+  using index_t = AltBlockIndex;
+  using payloads_t = typename AltBlockIndex::payloads_t;
   using endorsement_t = typename index_t::endorsement_t;
   using eid_t = typename endorsement_t::id_t;
   using hash_t = typename AltBlock::hash_t;
 
-  using PopForkComparator = PopAwareForkResolutionComparator<AltBlock,
+  using PopForkComparator = PopAwareForkResolutionComparator<index_t,
                                                              AltChainParams,
                                                              VbkBlockTree,
                                                              AltTree>;
@@ -67,15 +70,15 @@ struct AltTree : public BaseBlockTree<AltBlock> {
   void removePayloads(const AltBlock::hash_t& containing,
                       const PopData& popData);
 
-  bool addPayloads(index_t& index,
-                   const PopData& popData,
-                   ValidationState& state);
-
   bool addPayloads(const AltBlock::hash_t& containing,
                    const PopData& popData,
                    ValidationState& state);
 
   bool addPayloads(const AltBlock& containing,
+                   const PopData& popData,
+                   ValidationState& state);
+
+  bool addPayloads(index_t& index,
                    const PopData& popData,
                    ValidationState& state);
 
@@ -93,7 +96,7 @@ struct AltTree : public BaseBlockTree<AltBlock> {
   //! - does validation of endorsements
   //! - recovers tips array
   //! @invariant NOT atomic.
-  bool loadBlock(const index_t& index, ValidationState& state) override;
+  bool loadBlock(const base_index_t& index, ValidationState& state) override;
 
   bool operator==(const AltTree& o) const {
     return cmp_ == o.cmp_ && base::operator==(o);
@@ -140,9 +143,9 @@ struct AltTree : public BaseBlockTree<AltBlock> {
   std::string toPrettyString(size_t level = 0) const;
 
   using base::setState;
-  bool setState(index_t& to, ValidationState& state) override;
+  bool setState(base_index_t& to, ValidationState& state) override;
 
-  void overrideTip(index_t& to) override;
+  void overrideTip(base_index_t& to) override;
 
  protected:
   const alt_config_t* alt_config_;
@@ -152,7 +155,8 @@ struct AltTree : public BaseBlockTree<AltBlock> {
   PopRewards rewards_;
   PayloadsStorage& storagePayloads_;
 
-  void determineBestChain(index_t& candidate, ValidationState& state) override;
+  void determineBestChain(base_index_t& candidate,
+                          ValidationState& state) override;
 
   bool addPayloads(index_t& index,
                    PopData& payloads,
@@ -160,6 +164,18 @@ struct AltTree : public BaseBlockTree<AltBlock> {
                    bool continueOnInvalid = false);
 
   bool setTipContinueOnInvalid(index_t& to, ValidationState& state);
+
+  std::shared_ptr<base_index_t> makeBlockIndex() override {
+    return std::make_shared<index_t>();
+  }
+
+  index_t& getAltBlockIndex(base_index_t& index) {
+    return dynamic_cast<AltBlockIndex&>(index);
+  }
+
+  index_t* getAltBlockIndex(const hash_t& hash) {
+    return dynamic_cast<index_t*>(getBlockIndex(hash));
+  }
 };
 
 template <>
@@ -169,33 +185,6 @@ void removePayloadsFromIndex(BlockIndex<AltBlock>& index,
 template <>
 std::vector<CommandGroup> PayloadsStorage::loadCommands(
     const typename AltTree::index_t& index, AltTree& tree);
-
-template <typename JsonValue>
-JsonValue ToJSON(const BlockIndex<AltBlock>& i) {
-  auto obj = json::makeEmptyObject<JsonValue>();
-  std::vector<uint256> endorsements;
-  for (const auto& e : i.getContainingEndorsements()) {
-    endorsements.push_back(e.first);
-  }
-  json::putArrayKV(obj, "containingEndorsements", endorsements);
-
-  std::vector<uint256> endorsedBy;
-  for (const auto* e : i.endorsedBy) {
-    endorsedBy.push_back(e->id);
-  }
-  json::putArrayKV(obj, "endorsedBy", endorsedBy);
-  json::putIntKV(obj, "status", i.getStatus());
-
-  auto stored = json::makeEmptyObject<JsonValue>();
-  json::putArrayKV(
-      stored, "vbkblocks", i.getPayloadIds<VbkBlock, typename VbkBlock::id_t>());
-  json::putArrayKV(stored, "vtbs", i.getPayloadIds<VTB, typename VTB::id_t>());
-  json::putArrayKV(stored, "atvs", i.getPayloadIds<ATV, typename ATV::id_t>());
-
-  json::putKV(obj, "stored", stored);
-
-  return obj;
-}
 
 inline uint8_t getBlockProof(const AltBlock&) { return 0; }
 
