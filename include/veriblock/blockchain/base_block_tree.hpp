@@ -98,6 +98,8 @@ struct BaseBlockTree {
     current->pnext = next;
     // recover pprev
     current->pprev = getBlockIndex(index.getHeader().previousBlock);
+    // clear inmem fields
+    current->setNullInmemFields();
 
     if (current->pprev != nullptr) {
       // prev block found

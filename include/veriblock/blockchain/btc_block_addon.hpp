@@ -24,6 +24,11 @@ struct BtcBlockAddon {
   //! this block. must be a vector, because we can have duplicates here
   std::vector<VbkEndorsement*> blockOfProofEndorsements;
 
+  void setNullInmemFields() {
+    chainWork = 0;
+    blockOfProofEndorsements.clear();
+  }
+
   void setIsBootstrap(bool isBootstrap) {
     if (isBootstrap) {
       // pretend this block is referenced by the genesis block of the SI chain

@@ -27,7 +27,7 @@ TEST_F(SetStateAtomicity, setStateAtomicity) {
   chainA = generateNextBlock(chainA);
   auto payloads = endorseAltBlock({altForkPoint}, 1);
   ASSERT_TRUE(alttree.acceptBlockHeader(chainA, state));
-  ASSERT_TRUE(alttree.addPayloads(chainA.getHash(), {payloads}, state));
+  ASSERT_TRUE(AddPayloads(chainA.getHash(), {payloads}));
 
   // make a copy that we will use later to create corrupted payloads
   VTB corruptedVtb = payloads.vtbs.at(0);
@@ -38,7 +38,7 @@ TEST_F(SetStateAtomicity, setStateAtomicity) {
       payloads.context.begin(),
       payloads.context.begin() + (payloads.context.size() - 2));
   ASSERT_TRUE(alttree.acceptBlockHeader(chainA, state));
-  ASSERT_TRUE(alttree.addPayloads(chainA.getHash(), payloads, state));
+  ASSERT_TRUE(AddPayloads(chainA.getHash(), payloads));
 
   // corrupted payloads
   std::vector<uint8_t> invalid_hash = {1, 2, 3, 9, 8, 2};
@@ -53,8 +53,8 @@ TEST_F(SetStateAtomicity, setStateAtomicity) {
   corruptedPayloads.vtbs.push_back(corruptedVtb);
 
   ASSERT_TRUE(alttree.acceptBlockHeader(corruptedAltBlock, state));
-  ASSERT_TRUE(alttree.addPayloads(
-      corruptedAltBlock.getHash(), corruptedPayloads, state));
+  ASSERT_TRUE(AddPayloads(
+      corruptedAltBlock.getHash(), corruptedPayloads));
 
   auto chainB = corruptedAltBlock;
 

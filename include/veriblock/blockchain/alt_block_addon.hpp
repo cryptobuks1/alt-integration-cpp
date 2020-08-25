@@ -22,6 +22,11 @@ struct AltBlockAddon : public PopState<AltEndorsement> {
   // remove this
   uint8_t chainWork;
 
+  void setNullInmemFields() {
+    chainWork = 0;
+    endorsedBy.clear();
+  }
+
   bool hasPayloads() const {
     return !_atvids.empty() || !_vtbids.empty() || !_vbkblockids.empty();
   }

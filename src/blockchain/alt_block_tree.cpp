@@ -3,12 +3,13 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
+#include "veriblock/blockchain/alt_block_tree.hpp"
+
 #include <veriblock/blockchain/commands/commands.hpp>
 #include <veriblock/reversed_range.hpp>
-#include <veriblock/storage/batch_adaptor.hpp>
+#include <veriblock/storage/block_batch_adaptor.hpp>
 
 #include "veriblock/algorithm.hpp"
-#include "veriblock/blockchain/alt_block_tree.hpp"
 #include "veriblock/command_group_cache.hpp"
 #include "veriblock/rewards/poprewards.hpp"
 #include "veriblock/rewards/poprewards_calculator.hpp"
@@ -16,6 +17,7 @@
 namespace altintegration {
 
 template struct BlockIndex<AltBlock>;
+template struct BaseBlockTree<AltBlock>;
 
 template <>
 bool checkBlockTime(const BlockIndex<AltBlock>& prev,
@@ -65,7 +67,7 @@ bool AltTree::bootstrap(ValidationState& state) {
 template <typename Pop>
 void commitPayloadsIds(BlockIndex<AltBlock>& index,
                        const std::vector<Pop>& pop,
-                       PayloadsStorage& storage) {
+                       PayloadsIndex& storage) {
   auto pids = map_get_id(pop);
   index.template setPayloads<Pop>(pids);
 
@@ -82,7 +84,7 @@ auto findDuplicates(BlockIndex<AltBlock>& index, Container& pop, AltTree& tree)
   Chain<BlockIndex<AltBlock>> chain(startHeight, &index);
   std::unordered_set<std::vector<uint8_t>> ids;
 
-  const auto& storage = tree.getStorage();
+  const auto& storage = tree.getPayloadsIndex();
   auto newend = std::remove_if(pop.begin(), pop.end(), [&](const Element& p) {
     const auto id = getIdVector(p);
     // ensure existing blocks do not contain this id
@@ -203,12 +205,9 @@ bool AltTree::addPayloads(index_t& index,
 
   // all payloads checked, they do not contain duplicates. to ensure atomic
   // change, we commit payloads after all 3 vectors have been validated
-  commitPayloadsIds<VbkBlock>(index, payloads.context, storage_);
-  commitPayloadsIds<VTB>(index, payloads.vtbs, storage_);
-  commitPayloadsIds<ATV>(index, payloads.atvs, storage_);
-
-  // save payloads on disk
-  storage_.savePayloads(payloads);
+  commitPayloadsIds<VbkBlock>(index, payloads.context, payloadsIndex_);
+  commitPayloadsIds<VTB>(index, payloads.vtbs, payloadsIndex_);
+  commitPayloadsIds<ATV>(index, payloads.atvs, payloadsIndex_);
 
   // we successfully added this block payloads
   index.setFlag(BLOCK_HAS_PAYLOADS);
@@ -279,32 +278,6 @@ std::map<std::vector<uint8_t>, int64_t> AltTree::getPopPayout(
   return ret;
 }
 
-void AltTree::payloadsToCommands(const ATV& atv,
-                                 const AltBlock& containing,
-                                 std::vector<CommandPtr>& commands) {
-  addBlock(vbk(), atv.blockOfProof, commands);
-
-  auto endorsed_hash =
-      alt_config_->getHash(atv.transaction.publicationData.header);
-
-  auto e = AltEndorsement::fromContainerPtr(
-      atv, containing.getHash(), endorsed_hash);
-
-  auto cmd = std::make_shared<AddAltEndorsement>(vbk(), *this, std::move(e));
-  commands.push_back(std::move(cmd));
-}
-
-void AltTree::payloadsToCommands(const VTB& vtb,
-                                 std::vector<CommandPtr>& commands) {
-  auto cmd = std::make_shared<AddVTB>(*this, vtb);
-  commands.push_back(std::move(cmd));
-}
-
-void AltTree::payloadsToCommands(const VbkBlock& block,
-                                 std::vector<CommandPtr>& commands) {
-  addBlock(vbk(), block, commands);
-}
-
 std::string AltTree::toPrettyString(size_t level) const {
   std::string pad(level, ' ');
   return fmt::sprintf("%sAltTree{blocks=%llu\n%s\n%s\n%s}",
@@ -364,9 +337,7 @@ int AltTree::comparePopScore(const AltBlock::hash_t& A,
 }
 
 template <typename Pop, typename Tree, typename Index>
-static void clearSideEffects(Tree& tree,
-                             Index& index,
-                             PayloadsStorage& storage) {
+static void clearSideEffects(Tree& tree, Index& index, PayloadsIndex& storage) {
   auto containingHash = index.getHash();
   auto& payloadIds = index.template getPayloadIds<Pop>();
   for (const auto& pid : payloadIds) {
@@ -407,9 +378,9 @@ void AltTree::removeAllPayloads(index_t& index) {
     return;
   }
 
-  clearSideEffects<VbkBlock>(*this, index, storage_);
-  clearSideEffects<VTB>(*this, index, storage_);
-  clearSideEffects<ATV>(*this, index, storage_);
+  clearSideEffects<VbkBlock>(*this, index, payloadsIndex_);
+  clearSideEffects<VTB>(*this, index, payloadsIndex_);
+  clearSideEffects<ATV>(*this, index, payloadsIndex_);
   index.clearPayloads();
 
   index.unsetFlag(BLOCK_HAS_PAYLOADS);
@@ -417,7 +388,7 @@ void AltTree::removeAllPayloads(index_t& index) {
 
 template <typename Payloads, typename BlockIndex>
 void removePayloadsIfInvalid(std::vector<Payloads>& p,
-                             PayloadsStorage& storage,
+                             PayloadsIndex& storage,
                              BlockIndex& index) {
   auto containing = index.getHash();
   auto it = std::remove_if(p.begin(), p.end(), [&](const Payloads& payloads) {
@@ -466,9 +437,9 @@ void AltTree::filterInvalidPayloads(PopData& pop) {
   // setState in 'continueOnInvalid' mode
   setTipContinueOnInvalid(*tmpindex);
 
-  removePayloadsIfInvalid(pop.atvs, storage_, *tmpindex);
-  removePayloadsIfInvalid(pop.vtbs, storage_, *tmpindex);
-  removePayloadsIfInvalid(pop.context, storage_, *tmpindex);
+  removePayloadsIfInvalid(pop.atvs, payloadsIndex_, *tmpindex);
+  removePayloadsIfInvalid(pop.vtbs, payloadsIndex_, *tmpindex);
+  removePayloadsIfInvalid(pop.context, payloadsIndex_, *tmpindex);
 
   VBK_LOG_INFO("After filter VBK=%d VTB=%d ATV=%d",
                pop.context.size(),
@@ -555,7 +526,7 @@ bool AltTree::loadBlock(const AltTree::index_t& index, ValidationState& state) {
     return state.Invalid("bad-endorsements");
   }
 
-  storage_.addBlockToIndex(*current);
+  payloadsIndex_.addBlockToIndex(*current);
 
   return true;
 }
@@ -563,20 +534,20 @@ bool AltTree::loadBlock(const AltTree::index_t& index, ValidationState& state) {
 AltTree::AltTree(const AltTree::alt_config_t& alt_config,
                  const AltTree::vbk_config_t& vbk_config,
                  const AltTree::btc_config_t& btc_config,
-                 PayloadsStorage& storagePayloads)
+                 PayloadsProvider& payloadsProvider)
     : alt_config_(&alt_config),
       vbk_config_(&vbk_config),
       btc_config_(&btc_config),
       cmp_(std::make_shared<VbkBlockTree>(
-               vbk_config, btc_config, storagePayloads),
-           vbk_config,
+               vbk_config, btc_config, payloadsProvider, payloadsIndex_),
            alt_config,
-           storagePayloads),
+           payloadsProvider,
+           payloadsIndex_),
       rewards_(alt_config),
-      storage_(storagePayloads) {}
+      payloadsProvider_(payloadsProvider) {}
 
 void AltTree::removeSubtree(AltTree::index_t& toRemove) {
-  storage_.removePayloadsIndex(toRemove);
+  payloadsIndex_.removePayloadsIndex(toRemove);
   base::removeSubtree(toRemove);
 }
 
@@ -602,23 +573,8 @@ void AltTree::removePayloads(const AltTree::hash_t& hash) {
   return removeAllPayloads(*index);
 }
 
-template <>
-std::vector<CommandGroup> PayloadsStorage::loadCommands(
-    const typename AltTree::index_t& index, AltTree& tree) {
-  std::vector<CommandGroup> out{};
-  std::vector<CommandGroup> payloads_out;
-  payloads_out =
-      loadCommandsStorage<AltTree, VbkBlock>(DB_VBK_PREFIX, index, tree);
-  out.insert(out.end(), payloads_out.begin(), payloads_out.end());
-  payloads_out = loadCommandsStorage<AltTree, VTB>(DB_VTB_PREFIX, index, tree);
-  out.insert(out.end(), payloads_out.begin(), payloads_out.end());
-  payloads_out = loadCommandsStorage<AltTree, ATV>(DB_ATV_PREFIX, index, tree);
-  out.insert(out.end(), payloads_out.begin(), payloads_out.end());
-  return out;
-}
-
 template <typename Payloads>
-void removeId(PayloadsStorage& storage,
+void removeId(PayloadsIndex& storage,
               BlockIndex<AltBlock>& index,
               const typename Payloads::id_t& pid) {
   auto& payloads = index.template getPayloadIds<Payloads>();
@@ -629,7 +585,7 @@ void removeId(PayloadsStorage& storage,
 }
 
 template <>
-void removePayloadsFromIndex(PayloadsStorage& storage,
+void removePayloadsFromIndex(PayloadsIndex& storage,
                              BlockIndex<AltBlock>& index,
                              const CommandGroup& cg) {
   // TODO: can we do better?

@@ -16,7 +16,7 @@
 #include <veriblock/finalizer.hpp>
 #include <veriblock/keystone_util.hpp>
 #include <veriblock/logger.hpp>
-#include <veriblock/storage/payloads_storage.hpp>
+#include <veriblock/storage/payloads_index.hpp>
 
 namespace altintegration {
 
@@ -364,13 +364,13 @@ struct PopAwareForkResolutionComparator {
                                protected_params_t>;
 
   PopAwareForkResolutionComparator(std::shared_ptr<ProtectingBlockTree> tree,
-                                   const protecting_params_t& protectingParams,
                                    const protected_params_t& protectedParams,
-                                   PayloadsStorage& storage)
+                                   PayloadsProvider& payloadsProvider,
+                                   PayloadsIndex& payloadsIndex)
       : ing_(std::move(tree)),
         protectedParams_(&protectedParams),
-        protectingParams_(&protectingParams),
-        storage_(storage) {
+        payloadsProvider_(payloadsProvider),
+        payloadsIndex_(payloadsIndex) {
     VBK_ASSERT(protectedParams.getKeystoneInterval() > 0);
   }
 
@@ -397,7 +397,7 @@ struct PopAwareForkResolutionComparator {
     auto guard = ing_->deferForkResolutionGuard();
     auto originalTip = ing_->getBestChain().tip();
 
-    sm_t sm(ed, *ing_, storage_, 0, continueOnInvalid);
+    sm_t sm(ed, *ing_, payloadsProvider_, payloadsIndex_, 0, continueOnInvalid);
     if (sm.setState(*currentActive, to, state)) {
       return true;
     }
@@ -446,7 +446,8 @@ struct PopAwareForkResolutionComparator {
 
       auto guard = ing_->deferForkResolutionGuard();
 
-      sm_t sm(ed, *ing_, storage_, bestTip->getHeight());
+      sm_t sm(
+          ed, *ing_, payloadsProvider_, payloadsIndex_, bestTip->getHeight());
       if (!sm.apply(*bestTip, candidate, state)) {
         // new chain is invalid. our current chain is definitely better.
         VBK_LOG_INFO("Candidate contains INVALID command(s): %s",
@@ -493,7 +494,11 @@ struct PopAwareForkResolutionComparator {
     // (chainB)
     VBK_ASSERT(chainA.tip() == bestTip);
 
-    sm_t sm(ed, *ing_, storage_, chainA.first()->getHeight());
+    sm_t sm(ed,
+            *ing_,
+            payloadsProvider_,
+            payloadsIndex_,
+            chainA.first()->getHeight());
 
     // we are at chainA.
     // apply all payloads from chain B (both chains have same first block - the
@@ -534,7 +539,8 @@ struct PopAwareForkResolutionComparator {
     if (result >= 0) {
       // chain A remains the best one. unapply B and leave A applied
       auto guard = ing_->deferForkResolutionGuard();
-      sm.unapply(*chainB.tip(), *chainB.first());
+      bool ret = sm.unapply(*chainB.tip(), *chainB.first(), state);
+      VBK_ASSERT_MSG(ret, "error during POPFR::unapply=%s", state.toString());
       guard.overrideDeferredForkResolution(originalProtectingTip);
       VBK_LOG_INFO("Chain A remains the best chain");
     } else {
@@ -543,8 +549,10 @@ struct PopAwareForkResolutionComparator {
 
       // TODO: unapply part of the chain with unknown validity.
       // unapply both chains, unapply B first
-      sm.unapply(*chainB.tip(), *chainB.first());
-      sm.unapply(*chainA.tip(), *chainA.first());
+      bool ret = sm.unapply(*chainB.tip(), *chainB.first(), state);
+      VBK_ASSERT_MSG(ret, "error during POPFR::unapply=%s", state.toString());
+      ret = sm.unapply(*chainA.tip(), *chainA.first(), state);
+      VBK_ASSERT_MSG(ret, "error during POPFR::unapply=%s", state.toString());
 
       // validate chainB
       if (!sm.apply(*chainB.first(), *chainB.tip(), state)) {
@@ -575,8 +583,8 @@ struct PopAwareForkResolutionComparator {
   std::shared_ptr<ProtectingBlockTree> ing_;
 
   const protected_params_t* protectedParams_;
-  const protecting_params_t* protectingParams_;
-  PayloadsStorage& storage_;
+  PayloadsProvider& payloadsProvider_;
+  PayloadsIndex& payloadsIndex_;
 };
 
 }  // namespace altintegration

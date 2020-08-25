@@ -301,17 +301,16 @@ struct TestComparator {
     const base& A = a;
     const base& B = b;
     VBK_EXPECT_TRUE(this->operator()(A, B, suppress), suppress);
-    VBK_EXPECT_TRUE(this->operator()(a.getStorage(), b.getStorage(), suppress),
-                    suppress);
+    VBK_EXPECT_TRUE(
+        this->operator()(a.getPayloadsIndex(), b.getPayloadsIndex(), suppress),
+        suppress);
+    // do not compare payloads providers here
     return true;
   }
 
-  bool operator()(const PayloadsStorage& a,
-                  const PayloadsStorage& b,
+  bool operator()(const PayloadsIndex& a,
+                  const PayloadsIndex& b,
                   bool suppress = false) {
-    VBK_EXPECT_TRUE(this->operator()(a.getRepo(), b.getRepo(), suppress),
-                    suppress);
-
     VBK_EXPECT_TRUE(
         this->operator()(a.getPayloadsInAlt(), b.getPayloadsInAlt(), suppress),
         suppress);
@@ -321,31 +320,6 @@ struct TestComparator {
 
     VBK_EXPECT_EQ(a.getValidity(), b.getValidity(), suppress);
     return true;
-  }
-
-  bool operator()(const Repository& a,
-                  const Repository& b,
-                  bool suppress = false) {
-    std::map<std::vector<uint8_t>, std::vector<uint8_t>> mA;
-    std::map<std::vector<uint8_t>, std::vector<uint8_t>> mB;
-
-    readRepositoryInto(mA, a);
-    readRepositoryInto(mB, b);
-
-    VBK_EXPECT_EQ(mA, mB, suppress);
-    return true;
-  }
-
- private:
-  void readRepositoryInto(
-      std::map<std::vector<uint8_t>, std::vector<uint8_t>>& m,
-      const Repository& r) {
-    auto cursor = r.newCursor();
-    cursor->seekToFirst();
-    while (cursor->isValid()) {
-      m.insert({cursor->key(), cursor->value()});
-      cursor->next();
-    }
   }
 };
 

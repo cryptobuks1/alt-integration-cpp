@@ -28,6 +28,12 @@ struct VbkBlockAddon : public PopState<VbkEndorsement> {
   //! this block. must be a vector, because we can have duplicates here
   std::vector<AltEndorsement*> blockOfProofEndorsements;
 
+  void setNullInmemFields() {
+    chainWork = 0;
+    blockOfProofEndorsements.clear();
+    endorsedBy.clear();
+  }
+
   uint32_t refCount() const { return _refCount; }
 
   void addRef(ref_height_t) {

@@ -10,7 +10,8 @@
 #include <veriblock/assert.hpp>
 #include <veriblock/blockchain/chain.hpp>
 #include <veriblock/reversed_range.hpp>
-#include <veriblock/storage/payloads_storage.hpp>
+#include <veriblock/storage/payloads_index.hpp>
+#include <veriblock/storage/payloads_provider.hpp>
 
 namespace altintegration {
 
@@ -77,23 +78,24 @@ struct PopStateMachine {
   using block_t = typename index_t::block_t;
   using endorsement_t = typename index_t::endorsement_t;
   using height_t = typename ProtectedIndex::height_t;
-  using storage_t = PayloadsStorage;
 
   PopStateMachine(ProtectedTree& ed,
                   ProtectingBlockTree& ing,
-                  storage_t& storage,
+                  PayloadsProvider& payloadsProvider,
+                  PayloadsIndex& payloadsIndex,
                   height_t startHeight = 0,
                   bool continueOnInvalid = false)
       : ed_(ed),
         ing_(ing),
-        storage_(storage),
+        payloadsProvider_(payloadsProvider),
+        payloadsIndex_(payloadsIndex),
         startHeight_(startHeight),
         continueOnInvalid_(continueOnInvalid) {}
 
   // atomic: applies either all or none of the block's commands
-  bool applyBlock(index_t& index,
-                  ValidationState& state,
-                  bool shouldSetCanBeApplied = true) {
+  VBK_CHECK_RETURN bool applyBlock(index_t& index,
+                                   ValidationState& state,
+                                   bool shouldSetCanBeApplied = true) {
     assertBlockCanBeApplied(index, shouldSetCanBeApplied);
 
     if (index.hasFlags(BLOCK_FAILED_BLOCK)) {
@@ -108,10 +110,15 @@ struct PopStateMachine {
     // if the block is marked as BLOCK_FAILED_POP,
     // we try to apply it and see if it is still invalid
 
-    auto containingHash = index.getHash();
     if (index.hasPayloads()) {
-      auto cgroups = storage_.loadCommands<ProtectedTree>(index, ed_);
+      std::vector<CommandGroup> cgroups;
+      if (!payloadsProvider_.getCommands(ed_, index, cgroups, state)) {
+        // can't load commands from block `index` - system error, can't proceed
+        VBK_ASSERT(state.IsError());
+        return false;
+      }
 
+      const auto containingHash = index.getHash();
       for (auto cgroup = cgroups.cbegin(); cgroup != cgroups.cend(); ++cgroup) {
         VBK_LOG_DEBUG("Applying payload %s from block %s",
                       HexStr(cgroup->id),
@@ -122,15 +129,15 @@ struct PopStateMachine {
           // unless we are in in 'continueOnInvalid' mode which precludes
           // payload re-validation
           if (!continueOnInvalid_) {
-            storage_.setValidity(containingHash, cgroup->id, true);
+            payloadsIndex_.setValidity(containingHash, cgroup->id, true);
           }
 
         } else {
           // flag the command group as invalid
-          storage_.setValidity(containingHash, cgroup->id, false);
+          payloadsIndex_.setValidity(containingHash, cgroup->id, false);
 
           if (continueOnInvalid_) {
-            removePayloadsFromIndex<block_t>(storage_, index, *cgroup);
+            removePayloadsFromIndex<block_t>(payloadsIndex_, index, *cgroup);
             state.clear();
             continue;
           }
@@ -170,12 +177,25 @@ struct PopStateMachine {
     return true;
   }
 
-  // atomic: applies either all of the block's commands or fails on an assert
-  void unapplyBlock(index_t& index) {
+  /**
+   * Removes all side effects made by this block.
+   * @param[in] index block to unapply
+   * @param[out] state will be set to Error in case of error
+   * @return false in case of system error, true otherwise
+   * @invariant atomic - unapplies either all of the block's commands or fails
+   * on an assert
+   */
+  VBK_CHECK_RETURN bool unapplyBlock(index_t& index, ValidationState& state) {
     assertBlockCanBeUnapplied(index);
 
     if (index.hasPayloads()) {
-      auto cgroups = storage_.loadCommands<ProtectedTree>(index, ed_);
+      std::vector<CommandGroup> cgroups;
+      if (!payloadsProvider_.getCommands(ed_, index, cgroups, state)) {
+        // can't load commands from block `index` - system error, can't proceed
+        VBK_ASSERT(state.IsError());
+        return false;
+      }
+
       for (const auto& cgroup : reverse_iterate(cgroups)) {
         VBK_LOG_DEBUG("Unapplying payload %s from block %s",
                       HexStr(cgroup.id),
@@ -185,15 +205,19 @@ struct PopStateMachine {
     }
 
     index.unsetFlag(BLOCK_APPLIED);
+
+    return true;
   }
 
   // unapplies all commands commands from blocks in the range of [from; to)
   // while predicate returns true, if predicate return false stop unapplying and
   // return the index on which predicate returns false
   // atomic: either applies all of the requested blocks or fails on an assert
-  index_t* unapplyWhile(index_t& from,
-                        index_t& to,
-                        const std::function<bool(index_t& index)>& pred) {
+  VBK_CHECK_RETURN index_t* unapplyWhile(
+      index_t& from,
+      index_t& to,
+      ValidationState& state,
+      const std::function<bool(index_t& index)>& pred) {
     if (&from == &to) {
       return &to;
     }
@@ -210,10 +234,15 @@ struct PopStateMachine {
                   to.toPrettyString());
 
     for (auto* current : reverse_iterate(chain)) {
-      if (pred(*current)) {
-        unapplyBlock(*current);
-      } else {
+      if (!pred(*current)) {
+        VBK_ASSERT(current != nullptr);
         return current;
+      }
+
+      if (!unapplyBlock(*current, state)) {
+        // system error
+        VBK_ASSERT(state.IsError());
+        return nullptr;
       }
     }
 
@@ -223,18 +252,22 @@ struct PopStateMachine {
   // unapplies all commands commands from blocks in the range of [from; to)
   // atomic: either applies all of the requested blocks
   // or fails on an assert
-  void unapply(index_t& from, index_t& to) {
+  VBK_CHECK_RETURN bool unapply(index_t& from,
+                                index_t& to,
+                                ValidationState& state) {
     auto pred = [](index_t&) -> bool { return true; };
-    auto* index = unapplyWhile(from, to, pred);
-    VBK_ASSERT(index == &to);
+    auto* index = unapplyWhile(from, to, state, pred);
+    VBK_ASSERT(index == nullptr || index == &to);
+    // returns false if index is nullptr
+    return index != nullptr;
   }
 
   // applies all commands from blocks in the range of (from; to].
   // atomic: applies either all or none of the requested blocks
-  bool apply(index_t& from,
-             index_t& to,
-             ValidationState& state,
-             bool shouldSetCanBeApplied = true) {
+  VBK_CHECK_RETURN bool apply(index_t& from,
+                              index_t& to,
+                              ValidationState& state,
+                              bool shouldSetCanBeApplied = true) {
     if (&from == &to) {
       // already applied this block
       return true;
@@ -260,8 +293,8 @@ struct PopStateMachine {
 
     for (auto* index : chain) {
       if (!applyBlock(*index, state, shouldSetCanBeApplied)) {
-        // rollback the previously appled slice of the chain
-        unapply(*index->pprev, from);
+        // rollback the previously applied slice of the chain
+        std::ignore = unapply(*index->pprev, from, state);
         return false;
       }
     }
@@ -274,7 +307,9 @@ struct PopStateMachine {
   // assumes and requires that [from; genesis) is applied
   // optimization: avoids applying/unapplying (genesis; fork_point(from, to)]
   // atomic: either changes the state to 'to' or leaves it unchanged
-  bool setState(index_t& from, index_t& to, ValidationState& state) {
+  VBK_CHECK_RETURN bool setState(index_t& from,
+                                 index_t& to,
+                                 ValidationState& state) {
     if (&from == &to) {
       // already at this state
       return true;
@@ -292,7 +327,11 @@ struct PopStateMachine {
     VBK_ASSERT(forkBlock &&
                "state corruption: from and to must be part of the same tree");
 
-    unapply(from, *forkBlock);
+    if (!unapply(from, *forkBlock, state)) {
+      // system error
+      return false;
+    }
+
     if (!apply(*forkBlock, to, state)) {
       // attempted to switch to an invalid block, rollback
       bool success = apply(*forkBlock, from, state);
@@ -311,8 +350,9 @@ struct PopStateMachine {
  private:
   ProtectedTree& ed_;
   ProtectingBlockTree& ing_;
-  PayloadsStorage& storage_;
-  height_t startHeight_;
+  PayloadsProvider& payloadsProvider_;
+  PayloadsIndex& payloadsIndex_;
+  height_t startHeight_ = 0;
   bool continueOnInvalid_ = false;
 };
 
