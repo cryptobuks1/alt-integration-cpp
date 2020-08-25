@@ -182,8 +182,6 @@ struct PopStateMachine {
    * @param[in] index block to unapply
    * @param[out] state will be set to Error in case of error
    * @return false in case of system error, true otherwise
-   * @invariant atomic - unapplies either all of the block's commands or fails
-   * on an assert
    */
   VBK_CHECK_RETURN bool unapplyBlock(index_t& index, ValidationState& state) {
     assertBlockCanBeUnapplied(index);

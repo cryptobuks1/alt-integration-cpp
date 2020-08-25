@@ -97,6 +97,14 @@ struct BlockIndex : public Block::addon_t {
     setDirty();
   }
 
+  void setNullInmemFields() {
+    addon_t::setNullInmemFields();
+    this->pprev = nullptr;
+    this->pnext.clear();
+    // make it dirty by default
+    setDirty();
+  }
+
   bool raiseValidity(enum BlockStatus upTo) {
     VBK_ASSERT(!(upTo & ~BLOCK_VALID_MASK));  // Only validity flags allowed.
     if ((status & BLOCK_FAILED_MASK) != 0u) {
