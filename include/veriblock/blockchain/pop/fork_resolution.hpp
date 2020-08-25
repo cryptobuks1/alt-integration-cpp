@@ -539,8 +539,7 @@ struct PopAwareForkResolutionComparator {
     if (result >= 0) {
       // chain A remains the best one. unapply B and leave A applied
       auto guard = ing_->deferForkResolutionGuard();
-      bool ret = sm.unapply(*chainB.tip(), *chainB.first(), state);
-      VBK_ASSERT_MSG(ret, "error during POPFR::unapply=%s", state.toString());
+      sm.unapply(*chainB.tip(), *chainB.first());
       guard.overrideDeferredForkResolution(originalProtectingTip);
       VBK_LOG_INFO("Chain A remains the best chain");
     } else {
@@ -549,10 +548,8 @@ struct PopAwareForkResolutionComparator {
 
       // TODO: unapply part of the chain with unknown validity.
       // unapply both chains, unapply B first
-      bool ret = sm.unapply(*chainB.tip(), *chainB.first(), state);
-      VBK_ASSERT_MSG(ret, "error during POPFR::unapply=%s", state.toString());
-      ret = sm.unapply(*chainA.tip(), *chainA.first(), state);
-      VBK_ASSERT_MSG(ret, "error during POPFR::unapply=%s", state.toString());
+      sm.unapply(*chainB.tip(), *chainB.first());
+      sm.unapply(*chainA.tip(), *chainA.first());
 
       // validate chainB
       if (!sm.apply(*chainB.first(), *chainB.tip(), state)) {

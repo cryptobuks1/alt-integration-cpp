@@ -181,18 +181,18 @@ struct PopStateMachine {
    * Removes all side effects made by this block.
    * @param[in] index block to unapply
    * @param[out] state will be set to Error in case of error
-   * @return false in case of system error, true otherwise
    */
-  VBK_CHECK_RETURN bool unapplyBlock(index_t& index, ValidationState& state) {
+  void unapplyBlock(index_t& index) {
     assertBlockCanBeUnapplied(index);
 
     if (index.hasPayloads()) {
       std::vector<CommandGroup> cgroups;
-      if (!payloadsProvider_.getCommands(ed_, index, cgroups, state)) {
-        // can't load commands from block `index` - system error, can't proceed
-        VBK_ASSERT(state.IsError());
-        return false;
-      }
+      ValidationState state;
+      bool ret = payloadsProvider_.getCommands(ed_, index, cgroups, state);
+      VBK_ASSERT_MSG(ret,
+                     "failed to unapply block=%s, reason=%s",
+                     index.toPrettyString(),
+                     state.toString());
 
       for (const auto& cgroup : reverse_iterate(cgroups)) {
         VBK_LOG_DEBUG("Unapplying payload %s from block %s",
@@ -203,8 +203,6 @@ struct PopStateMachine {
     }
 
     index.unsetFlag(BLOCK_APPLIED);
-
-    return true;
   }
 
   // unapplies all commands commands from blocks in the range of [from; to)
@@ -214,7 +212,6 @@ struct PopStateMachine {
   VBK_CHECK_RETURN index_t* unapplyWhile(
       index_t& from,
       index_t& to,
-      ValidationState& state,
       const std::function<bool(index_t& index)>& pred) {
     if (&from == &to) {
       return &to;
@@ -232,15 +229,11 @@ struct PopStateMachine {
                   to.toPrettyString());
 
     for (auto* current : reverse_iterate(chain)) {
-      if (!pred(*current)) {
+      if (pred(*current)) {
+        unapplyBlock(*current);
+      } else {
         VBK_ASSERT(current != nullptr);
         return current;
-      }
-
-      if (!unapplyBlock(*current, state)) {
-        // system error
-        VBK_ASSERT(state.IsError());
-        return nullptr;
       }
     }
 
@@ -250,14 +243,10 @@ struct PopStateMachine {
   // unapplies all commands commands from blocks in the range of [from; to)
   // atomic: either applies all of the requested blocks
   // or fails on an assert
-  VBK_CHECK_RETURN bool unapply(index_t& from,
-                                index_t& to,
-                                ValidationState& state) {
+  void unapply(index_t& from, index_t& to) {
     auto pred = [](index_t&) -> bool { return true; };
-    auto* index = unapplyWhile(from, to, state, pred);
-    VBK_ASSERT(index == nullptr || index == &to);
-    // returns false if index is nullptr
-    return index != nullptr;
+    auto* index = unapplyWhile(from, to, pred);
+    VBK_ASSERT(index == &to);
   }
 
   // applies all commands from blocks in the range of (from; to].
@@ -292,7 +281,7 @@ struct PopStateMachine {
     for (auto* index : chain) {
       if (!applyBlock(*index, state, shouldSetCanBeApplied)) {
         // rollback the previously applied slice of the chain
-        std::ignore = unapply(*index->pprev, from, state);
+        unapply(*index->pprev, from);
         return false;
       }
     }
@@ -325,11 +314,7 @@ struct PopStateMachine {
     VBK_ASSERT(forkBlock &&
                "state corruption: from and to must be part of the same tree");
 
-    if (!unapply(from, *forkBlock, state)) {
-      // system error
-      return false;
-    }
-
+    unapply(from, *forkBlock);
     if (!apply(*forkBlock, to, state)) {
       // attempted to switch to an invalid block, rollback
       bool success = apply(*forkBlock, from, state);

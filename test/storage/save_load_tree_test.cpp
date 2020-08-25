@@ -50,7 +50,7 @@ struct SaveLoadTreeTest : public PopTestFixture, public testing::Test {
 // alttree does not contain any invalid blocks
 TEST_F(SaveLoadTreeTest, ValidTree) {
   save();
-  ASSERT_TRUE(load());
+  ASSERT_TRUE(load()) << state.toString();
   assertTreesEqual();
 }
 
