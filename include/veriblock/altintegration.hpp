@@ -16,7 +16,7 @@ namespace altintegration {
 
 struct Altintegration {
   static std::shared_ptr<Altintegration> create(
-      std::shared_ptr<Config> config, std::shared_ptr<PayloadsProvider>& db) {
+      std::shared_ptr<Config> config, std::shared_ptr<PayloadsProvider> db) {
     config->validate();
 
     auto service = std::make_shared<Altintegration>();
@@ -79,8 +79,6 @@ struct Altintegration {
   std::shared_ptr<MemPool> mempool;
   std::shared_ptr<AltTree> altTree;
   std::shared_ptr<PayloadsProvider> payloadsProvider;
-
-  std::vector<PopData> disconnected_popdata;
 };
 
 }  // namespace altintegration
