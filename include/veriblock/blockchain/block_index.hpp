@@ -101,7 +101,6 @@ struct BlockIndex : public Block::addon_t {
     addon_t::setNullInmemFields();
     this->pprev = nullptr;
     this->pnext.clear();
-    unsetDirty();
   }
 
   bool raiseValidity(enum BlockStatus upTo) {

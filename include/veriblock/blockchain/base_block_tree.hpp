@@ -96,6 +96,7 @@ struct BaseBlockTree {
     *current = index;
     // clear inmem fields
     current->setNullInmemFields();
+    current->unsetDirty();
     // recover pnext
     current->pnext = next;
     // recover pprev
