@@ -55,32 +55,6 @@ class PayloadsIndex {
   void removePayloadsIndex(const BlockIndex<AltBlock>& block);
   void removePayloadsIndex(const BlockIndex<VbkBlock>& block);
 
-  //  template <typename Tree>
-  //  std::vector<CommandGroup> loadCommands(Tree& tree,
-  //                                         const typename Tree::index_t&
-  //                                         index) {
-  //    std::vector<CommandGroup> out{};
-  //    const std::vector<uint8_t> containingHash =
-  //        static_cast<std::vector<uint8_t>>(index.getHash());
-  //    auto& cache = getCache<Tree>();
-  //    bool cacheHit = true;
-  //    if (!cache.get(containingHash, &out)) {
-  //      cacheHit = false;
-  //      auto popData = repo_->getPayloads(containingHash);
-  //      out = payloadsToCommandGroups(tree, popData, containingHash);
-  //      cache.put(containingHash, out);
-  //    }
-  //
-  //    VBK_LOG_DEBUG("Cache %s in %s %s; loaded %d cgs",
-  //                  (cacheHit ? "hit" : "miss"),
-  //                  Tree::block_t::name(),
-  //                  index.toPrettyString(),
-  //                  out.size());
-  //
-  //    // out is filled with commands
-  //    return out;
-  //  }
-
   // clang-format off
   const std::unordered_map<std::vector<uint8_t>, bool>& getValidity() const;
   const std::map<std::vector<uint8_t>, std::set<AltBlock::hash_t>>& getPayloadsInAlt() const;

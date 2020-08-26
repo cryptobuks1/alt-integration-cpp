@@ -112,11 +112,8 @@ struct PopStateMachine {
 
     if (index.hasPayloads()) {
       std::vector<CommandGroup> cgroups;
-      if (!payloadsProvider_.getCommands(ed_, index, cgroups, state)) {
-        // can't load commands from block `index` - system error, can't proceed
-        VBK_ASSERT(state.IsError());
-        return false;
-      }
+      bool ret = payloadsProvider_.getCommands(ed_, index, cgroups, state);
+      VBK_ASSERT_MSG(ret, "system error: %s", state.toString());
 
       const auto containingHash = index.getHash();
       for (auto cgroup = cgroups.cbegin(); cgroup != cgroups.cend(); ++cgroup) {
