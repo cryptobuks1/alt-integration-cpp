@@ -177,7 +177,6 @@ struct PopStateMachine {
   /**
    * Removes all side effects made by this block.
    * @param[in] index block to unapply
-   * @param[out] state will be set to Error in case of error
    */
   void unapplyBlock(index_t& index) {
     assertBlockCanBeUnapplied(index);

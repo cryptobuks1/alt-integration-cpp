@@ -88,7 +88,7 @@ struct PopPayoutsE2Etest : public ::testing::Test, public PopTestFixture {
       auto payloads1 = generateAltPayloads(
           {vbktx1, vbktx2}, tree.vbk().getBestChain().tip()->getHash());
       ASSERT_TRUE(tree.acceptBlockHeader(containing, state));
-      ASSERT_TRUE(AddPayloads(containing.getHash(), payloads1));
+      ASSERT_TRUE(AddPayloads(tree, containing.getHash(), payloads1));
       ASSERT_TRUE(tree.setState(containing.getHash(), state));
       validateAlttreeIndexState(tree, containing, payloads1);
     }

@@ -84,9 +84,7 @@ struct PopTestFixture {
   }
 
   bool AddPayloads(const AltBlock::hash_t& hash, const PopData& pop) {
-    popminer->getPayloadsProvider().write(pop);
-    payloadsProvider.write(pop);
-    return alttree.addPayloads(hash, pop, state);
+    return AddPayloads(alttree, hash, pop);
   }
 
   bool AddPayloads(AltTree& tree, const AltBlock::hash_t& hash, const PopData& pop) {
